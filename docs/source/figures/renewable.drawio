@@ -1,0 +1,45 @@
+<mxfile host="Electron" modified="2023-10-12T16:19:11.431Z" agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) draw.io/22.0.2 Chrome/114.0.5735.289 Electron/25.8.4 Safari/537.36" etag="yQB_lWmHHW7-YKVu9j1S" version="22.0.2" type="device">
+  <diagram name="Page-1" id="OMk8Flor9-d7_5F8JqJ7">
+    <mxGraphModel dx="1100" dy="991" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="OeZy0ZMXUKDgR2ET47Y--1" value="res_heater&lt;br&gt;(res_heater,electricity,heat)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="508" y="310" width="150" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="OeZy0ZMXUKDgR2ET47Y--2" value="DecHeat" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;fontSize=16;" vertex="1" parent="1">
+          <mxGeometry x="371" y="250" width="90" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="OeZy0ZMXUKDgR2ET47Y--3" value="gas" style="ellipse;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="371" y="302" width="120" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="OeZy0ZMXUKDgR2ET47Y--4" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="1" source="OeZy0ZMXUKDgR2ET47Y--5">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="707" y="430" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="OeZy0ZMXUKDgR2ET47Y--5" value="gas_heater&lt;br&gt;(CHP,helper,electricity)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="508" y="400" width="150" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="OeZy0ZMXUKDgR2ET47Y--6" value="buy_gas&lt;br&gt;(buy_gas,dummy,gas)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="167" y="302" width="190" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="OeZy0ZMXUKDgR2ET47Y--7" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="1" source="OeZy0ZMXUKDgR2ET47Y--8" target="OeZy0ZMXUKDgR2ET47Y--6">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="OeZy0ZMXUKDgR2ET47Y--8" value="dummy" style="ellipse;whiteSpace=wrap;html=1;dashed=1;dashPattern=8 8;" vertex="1" parent="1">
+          <mxGeometry x="23" y="302" width="120" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="OeZy0ZMXUKDgR2ET47Y--9" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="1" source="OeZy0ZMXUKDgR2ET47Y--10" target="OeZy0ZMXUKDgR2ET47Y--11">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="OeZy0ZMXUKDgR2ET47Y--10" value="sub4(CHP,helper,dummy)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="512" y="490" width="150" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="OeZy0ZMXUKDgR2ET47Y--11" value="dummy" style="ellipse;whiteSpace=wrap;html=1;dashed=1;dashPattern=8 8;" vertex="1" parent="1">
+          <mxGeometry x="707" y="480" width="120" height="80" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

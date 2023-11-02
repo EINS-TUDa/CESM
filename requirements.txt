@@ -1,0 +1,8 @@
+openpyxl
+numpy
+scipy
+pandas
+gurobipy
+sphinx
+sphinx-book-theme
+pydantic

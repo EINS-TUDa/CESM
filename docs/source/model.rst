@@ -1,0 +1,264 @@
+Model
+============================
+
+Sets
+-------
+- :math:`T`: Ordered time steps.
+- :math:`Y`: Ordered years.
+- :math:`CO`: commodities.
+- :math:`CP`: conversion process.
+- :math:`CS`: conversion subprocess which is determined buy the tuple :math:`(cp\in CP, cin \in CO, cout \in CO)`. Every conversion process has at least one conversion subprocess.
+- :math:`SCS`: is a subset of :math:`CS` that contains storage conversion subprocesses.
+
+Parameters
+----------
+- all parameters are Non-negative except it's specified otherwise.
+- Energy/Time is Power.
+
+Global
+~~~~~~
+- :math:`dt`: time step size. Dimension: Time. Range: Positive.
+- :math:`w`: weight of each time step in relation to the whole year. Range: Positive. default = 1.
+- :math:`discount\_rate`: The discount rate is the interest rate used to calculate the present value of future cash flows from a project or investment. Dimension: -. Range: Non-negative.
+
+
+Cost
+~~~~
+- :math:`opex\_cost\_energy(CS,Y)`: Operational cost per energy output of conversion subprocess :math:`cs` in year :math:`y`. Dimension: Money/Energy. Range = Non-negative. default = 0.
+- :math:`opex\_cost\_power(CS,Y)`: Operational cost per active capacity of conversion subprocess :math:`cs` in year :math:`y`. Dimension: Money/Power. Range = Non-negative. default = 0. 
+- :math:`capex\_cost\_power(CS,Y)`: Capital cost per unit of new capacity of conversion subprocess :math:`cs` in year :math:`y`. Dimension: Money/Power. Range = Non-negative. default = 0. 
+
+CO2
+~~~
+- :math:`spec\_co2(CS)`: Specific CO2 emission intensity per energy output of conversion subprocess :math:`cs`. Dimension: Mass/Energy. Range = Non-negative. default = 0. 
+- :math:`annual\_co2\_limit(Y)`: Annual CO2 emission limit of the energy system in year :math:`y`. Dimension: Mass. Range = Non-negative.
+- :math:`co2\_price(Y)`: CO2 price for emission from the energy system  in year :math:`y`. Dimension: Money/Mass. Range = Non-negative. default = 0. 
+
+Energy
+~~~~~~
+- :math:`max\_eout(CS,Y)`: maximum energy output of conversion subprocess :math:`cs` in year :math:`y`. Dimension: Energy. Range = Non-negative. default = :math:`\infty`.
+- :math:`min\_eout(CS,Y)`: minimum energy output of conversion subprocess :math:`cs` in year :math:`y`. Dimension: Energy. Range = Non-negative. default = 0.
+
+Capacity
+~~~~~~~~
+- :math:`cap\_min(CS,Y)`: minimum allowed active capacity of the conversion subprocess :math:`cs` at year :math:`y`. Dimension: Power. Range = Non-negative. default = 0. 
+- :math:`cap\_max(CS,Y)`: maximum allowed active capacity of the conversion subprocess :math:`cs` at year :math:`y`. Dimension: Power. Range = Non-negative. default = :math:`\infty` .
+- :math:`cap\_res\_max(CS,Y)`: maximum residual capacity of the conversion subprocess :math:`cs` at year :math:`y`. Dimension: Power. Range = Non-negative. default = 0. 
+- :math:`cap\_res\_min(CS,Y)`: minimum residual capacity of the conversion subprocess :math:`cs` at year :math:`y`. Dimension: Power. Range = Non-negative. default = 0. 
+
+Technology
+~~~~~~~~~~
+- :math:`efficiency(CS)`: output efficiency of conversion subprocess :math:`cs`. Dimension: -. Range: Non-negative. default = 1.
+- :math:`technical\_lifetime(CS)`: Technical lifetime of conversion subprocess :math:`cs`. Dimension: Time. default: 100.
+
+Availability
+~~~~~~~~~~~~
+- :math:`availability\_factor(CS,T)`: Availability factor of the subprocess :math:`cs` at time step :math:`t`. Range = [0,1]. default = 1. Dimension:-.
+- :math:`technical\_availability(CS)`: Technical Avaiability factor of the conversion subprocess :math:`cs`. Range = [0,1]. default = 1. 
+- :math:`output\_factor(CS,T)`: Share of the annual energy output supplied  of the conversion subprocess :math:`cs` at time step :math:`t` such that  :math:`\sum_{t \in T}Demand\_factor[cs,t]=1 \quad \forall cs \in CS`. Dimension: -. Range: Non-negative.
+
+Fractions of generation and consumption
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+- :math:`out\_frac\_min(CS,Y)`: minimal fraction of output commodity(cout) generation of conversion subprocess :math:`cs` in year :math:`y`. Dimension: -. Range: [0,1]. default = 0. 
+- :math:`out\_frac\_max(CS,Y)`: maximal fraction of output commodity(cout) generation of conversion subprocess :math:`cs` in year :math:`y`. Dimension: -. Range= [0,1]. default = 1.
+- :math:`in\_frac\_min(CS,Y)`: minimal fraction of input commodity(cin) generation of conversion subprocess :math:`cs` in year :math:`y`. Dimension: -. Range= [0,1]. default = 0.
+- :math:`in\_frac\_max(CS,Y)`: maximal fraction of input commodity(cout) generation of conversion subprocess :math:`cs` in year :math:`y`. Dimension: -. Range= [0,1]. default = 1.
+
+For `in\_frac\_min(CS,Y)` and `in\_frac\_max(CS,Y)` see :ref:`decentralized heating <decentralized_heating>` example.
+
+For `out\_frac\_min(CS,Y)` and `out\_frac\_max(CS,Y)` see :ref:`CHP <CHP>` example.
+
+Storage
+~~~~~~~
+- :math:`c\_rate(CS)`: indicates the discgarge and charging rate of the storage conversion subprocess :math:`cs`. 1C means that the full storage can be discharged in one hour. Range: Positive. Dimension: Power. 
+- :math:`efficiency\_charge(CS)`: Storage charging efficiency of conversion subprocess :math:`cs`. Dimension: -. Range = (0,1]. default = 1. 
+
+Variables
+---------
+All variables are Non-negative.
+
+Costs
+~~~~~
+- :math:`TOTEX`: Total Expenditure. Dimension: Money.
+- :math:`CAPEX`: Capital Expenditure. Dimension: Money.
+- :math:`OPEX`: Operational Expenditure. Dimension: Money.
+
+CO2
+~~~
+- :math:`Total\_annual\_co2\_emission(Y)`: Total Annual CO2 emission in year :math:`y`. Dimension: Mass.
+
+Power
+~~~~~
+- :math:`Cap\_new(CS,Y)`: New Capacity of conversion subprocess :math:`cs` installed at the beginning of year :math:`y`. Dimension: Power.
+- :math:`Cap\_active(CS,Y)`: Active Capacity of conversion subprocess :math:`cs` in year :math:`y`. Dimension: Power.
+- :math:`Cap\_res(CS,Y)`: residual Capacity of conversion subprocess :math:`cs` in year :math:`y`. Dimension: Power.
+- :math:`Pin(CS,Y,T)`: Power input of conversion subprocess :math:`cs` at time step :math:`t` in year :math:`y`. Dimension: Power.
+- :math:`Pout(CS,Y,T)`: Power output of conversion subprocess :math:`cs` at time step :math:`t` in year :math:`y`. Dimension: Power.
+
+Energy
+~~~~~~
+- :math:`Eouttot(CS,Y)`: Total energy output of the conversion subprocess :math:`cs` in year :math:`y`. Dimension: Energy.
+- :math:`Eintot(CS,Y)`: Total energy input of the conversion subprocess :math:`cs` in year :math:`y`. Dimension: Energy.
+- :math:`Eouttime(CS,Y,T)`: Total energy output of the conversion subprocess :math:`cs` at time step :math:`t` in year :math:`y`. Dimension: Energy.
+- :math:`Eintime(CS,Y,T)`: Total energy input of the conversion subprocess :math:`cs` at time step :math:`t` in year :math:`y`. Dimension: Energy.
+- :math:`Enetgen(CO,Y,T)`: Net energy generation of commodity :math:`co` at time step :math:`t` in year :math:`y`. Dimension: Energy.
+- :math:`Enetcons(CO,Y,T)`: Net energy consumption of commodity :math:`co` at time step :math:`t` in year :math:`y`. Dimension: Energy.
+
+Storage
+~~~~~~~
+- :math:`E\_storage\_level(CS,Y,T)`:Storage Energy level of storage conversion subprocess :math:`cs` at time step :math:`t` in year :math:`y`. Dimension: Energy.
+- :math:`E\_storage\_level\_max(CS,Y)`: Maximum Energy stored in the storage conversion subprocess :math:`cs` in year :math:`y`. Dimension: Energy.
+
+Constraints
+-----------
+
+Costs
+~~~~~
+
+.. math:: TOTEX = CAPEX + OPEX
+    :label: totex_eq
+
+.. math:: CAPEX = \sum_{y \in Y} \left(co2\_price[y] * Total\_annual\_co2\_emission[y]  + discount\_factor[y] * \sum_{cs \in CS} \left(Cap\_new[cs, y] * capex\_cost\_power[cs,y]\right)\right)
+    :label: capex_eq
+
+:eq:`capex_eq` capital cost consists of CO2 cost and capital investment.
+
+.. math:: OPEX = \sum_{cs\in CS}\sum_{y\in Y} Cap\_active[cs,y] * opex\_cost\_power[cs,y] + Eouttot[cs,y] * opex\_cost\_energy[cs,y]
+    :label: opex_eq
+
+:eq:`opex_eq` operational cost consists of cost per active unit of capacity and cost per unit of generation.
+
+Power Balance
+~~~~~~~~~~~~~
+
+.. math:: \sum_{cs \in CS| cs.cin = co} Pin[cs, t , y] = \sum_{cs \in CS| cs.cout = co} Pout[cs, t , y] \quad \forall t\in T, \forall y\in Y, \forall co\in CO\setminus \{Dummy\}
+    :label: power_balance_eq
+
+:eq:`power_balance_eq` At time step :math:`t` in year :math:`y` the total output and input of the commodity :math:`co` by all conversion processes should be equal. 
+
+CO2
+~~~
+
+.. math:: Total\_annual\_co2\_emission[y] = \sum_{cs \in CS} spec\_co2[cs] * Eouttot[cs,y] \quad \forall y \in Y
+    :label: annual_co2_emission_eq
+
+:eq:`annual_co2_emission_eq` total annual CO2 emission is equal to the sum of energy produced by each conversion process multiplied by its specific CO2 emission. 
+
+.. math:: Total\_annual\_co2\_emission[y] \leq annual\_co2\_limit[y] \quad \forall y \in Y 
+    :label: annual_co2_emission_limit_eq
+
+:eq:`annual_co2_emission_limit_eq` The Annual CO2 emission is limited.
+
+Power output
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. math:: Pout[cs,y,t] = Pin[cs,y,t] * efficiency[cs] \quad \forall y\in Y, \forall t\in T, \forall cs\in CS 
+    :label: efficiency_eq
+
+:eq:`efficiency_eq` the ration of output to input is equal to efficiency for each converssion process.
+
+.. math:: Pout[cs,y,t] \leq Cap\_active[cs,y] \quad \forall y\in Y, \forall t\in T, \forall cs\in CS
+    :label: max_power_out_eq
+
+:eq:`max_power_out_eq` The output is limited by the capacity of the converssion process.
+
+.. math:: Pout[cs,y,t] \leq Cap\_active[cs,y] * availability\_factor[cs,t] \quad  \forall y\in Y,\forall t\in T, \forall cs\in CS \setminus SCS
+    :label: re_availability_eq
+
+:eq:`re_availability_eq` The Generation of renewable energy is limited by the availability factor.
+
+Power Energy
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. math:: Eouttime[cs,y,t] = Pout[cs,y,t]*dt*w \quad  \forall y\in Y,\forall t\in T, \forall cs\in CS
+    :label: eouttime_eq
+
+:eq:`eouttime_eq` The energy output of converssion process :math:`cs` at time step :math:`t` in year :math:`y`.
+
+.. math:: Eintime[cs,y,t] = Pin[cs,y,t]*dt*w \quad  \forall y\in Y,\forall t\in T, \forall cs\in CS
+    :label: eintime_eq
+
+:eq:`eintime_eq`
+
+Fractions
+~~~~~~~~~~~~~~~~~~~
+
+.. math:: Eouttime[cs,t,y] \geq out\_frac\_min[cs,y] * Enetgen[cs.cout,y,t] \quad \forall y\in Y,\forall t\in T, \forall cs\in CS
+    :label: min_cosupply_eq
+
+:eq:`min_cosupply_eq` 
+
+.. math:: Eouttime[cs,t,y] \leq out\_frac\_max[cs,y]*Enetgen[cs.cout,y,t] \quad \forall y\in Y,\forall t\in T, \forall cs\in CS
+    :label: max_cosupply_eq
+
+.. math:: Eintime[cs,t,y] \geq in\_frac\_min[cs, y]*Enetcons[cs.cin,y,t] \quad \forall y\in Y, \forall t\in T, \forall cs\in CS
+    :label: min_couse_eq
+
+.. math:: Eintime[cs,t,y] \leq in\_frac\_max[cs, y] * Enetcons[cs.cin,y,t] \quad  \forall y\in Y,\forall t\in T, \forall cs\in CS
+    :label: max_couse_eq
+
+Capacity
+~~~~~~~~~~~~~~~~~~
+
+.. math:: Cap\_res[cs, y] \leq cap\_res\_max[cs, y] \quad \forall y\in Y, \forall cs\in CS
+    :label: max_cap_res_eq
+
+:eq:`max_cap_res_eq`
+
+.. math:: Cap\_res[cs, y] \geq cap\_res\_min[cs, y] \quad \forall y\in Y, \forall cs\in CS
+    :label: min_cap_res_eq
+
+:eq:`min_cap_res_eq`
+
+.. math:: Cap\_active[cs, y] = Cap\_res[cs, y] + \sum_{yy\in Y|y-technical_lifetime[cs]\leq yy \leq y} Cap\_new[cs, yy] \quad \forall y\in Y, \forall cs\in CS
+    :label: cap_active_eq
+
+.. math:: Cap\_active[cs,y] \leq cap\_max[cs,y] \quad \forall y\in Y, \forall cs\in CS
+    :label: max_active_cap_eq
+
+.. math:: Cap\_active[cs,y] \geq cap\_min[cs,y] \quad \forall y\in Y, \forall cs\in CS
+    :label: min_active_capacity_eq
+
+Auxiliary Variables Linking
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. math:: Eouttot[cs,y] = \sum_{t \in T} Eouttime[cs,t,y]  \quad \forall y\in Y, \forall cs\in CS
+    :label: energy_powerout_eq
+
+.. math:: Eintot[cs, y] = \sum_{t \in T} Eintime[cs, t, y] \quad \forall y\in Y, \forall cs\in CS
+    :label: energy_powerin_eq
+
+.. math:: Enetgen[co,t,y] = \sum_{cs\in CS|cs.cout=co} Eouttime[cs,t,y] \quad  \forall y\in Y, \forall t\in T,\forall co\in CO
+    :label: nettogen_eq
+
+.. math:: Enetcons[co,t,y] = \sum_{cs\in CS|cs.cin=co} Eintime[cs,t,y] \quad  \forall y\in Y, \forall t\in T, \forall co\in CO
+    :label: nettocon_eq
+
+Generation
+~~~~~~~~~~
+
+.. math:: Eouttot[cs,y] <= max\_eout[cs,y] \quad \forall y\in Y, \forall cs\in CS
+    :label: max_energyout_eq
+
+.. math:: Eouttot[cs,y] >= min\_eout[cs,y] \quad \forall y\in Y, \forall cs\in CS
+    :label: min_energyout_eq
+
+.. math:: Eouttime[cs,t,y] = output\_factor[cs,t] * Eouttot[cs,y] \quad  \forall y\in Y, \forall t\in T,\forall cs\in CS
+    :label: loadshape_eq
+
+
+Storage
+~~~~~~~
+
+.. math:: E\_storage\_level[cs,t,y] \leq E\_storage\_level\_max[cs,y] \quad \forall y\in Y, \forall t\in T, \forall cs\in SCS
+    :label: strorage_energy_limit
+
+.. math:: Pin[cs,t,y] \leq Cap\_active[cs, y] \quad \forall y\in Y, \forall t\in T, \forall cs\in SCS
+    :label: charge_power_limit
+
+.. math:: E\_storage\_level[cs,t,y] = E\_storage\_level[cs, t-1, y] + efficiency\_charge[cs] * Pin[cs, t,y] * dt - (Pout[cs,t,y]*dt)/(efficiency[cs]) \quad \forall y\in Y, \forall t\in T, \forall cs\in CS
+    :label: storage_energy_balance
+
+.. math:: E\_storage\_level\_max[cs, y] = Cap\_active[cs, y]/c\_rate[cs] \quad \forall y\in Y, \forall cs\in SCS
+    :label: c_rate_relation
