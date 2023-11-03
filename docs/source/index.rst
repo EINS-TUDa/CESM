@@ -12,6 +12,7 @@ Compact Energy System Modeling Tool
 
    model
    techmap
+   example
 
 
 
