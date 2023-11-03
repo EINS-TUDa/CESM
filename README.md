@@ -22,8 +22,14 @@ Download and Install the following softwares from their official websites:
 
 
 ## Documentation
-For documentation see the [documentation](https://cesm.readthedocs.io/en/latest/)
-or build it yourself using the following command:
+You can find our documentation [online](https://cesm.readthedocs.io/en/latest/)
+or build it yourself:
+
+1. Install documentarion requirements:
+```console 
+> pip install -r docs\requirements.txt
+```
+2. Make build documentation:
 ```console
 > docs\make html
 ```
