@@ -313,35 +313,35 @@ class Input:
 
 @dataclass
 class CostOutput:
-    OPEX: Positive
-    CAPEX: Positive
-    TOTEX: Positive
+    OPEX: NonNegative
+    CAPEX: NonNegative
+    TOTEX: NonNegative
 
 @dataclass
 class CO2Output:
-    Total_annual_co2_emission: Positive
+    Total_annual_co2_emission: Dict[Year,NonNegative]
 
 @dataclass
 class PowerOutput:
-    Cap_new: Dict[Tuple[ConversionSubprocess,Year],Positive]
-    Cap_active: Dict[Tuple[ConversionSubprocess,Year],Positive]
-    Cap_res: Dict[Tuple[ConversionSubprocess,Year],Positive]
-    Pin: Dict[Tuple[ConversionSubprocess,Year],Positive]
-    Pout: Dict[Tuple[ConversionSubprocess,Year],Positive]
+    Cap_new: Dict[Tuple[ConversionSubprocess,Year],NonNegative]
+    Cap_active: Dict[Tuple[ConversionSubprocess,Year],NonNegative]
+    Cap_res: Dict[Tuple[ConversionSubprocess,Year],NonNegative]
+    Pin: Dict[Tuple[ConversionSubprocess,Year,Time],NonNegative]
+    Pout: Dict[Tuple[ConversionSubprocess,Year,Time],NonNegative]
 
 @dataclass
 class EnergyOutput:
-    Eouttot: Dict[Tuple[ConversionSubprocess,Year],Positive]
-    Eintot: Dict[Tuple[ConversionSubprocess,Year],Positive]
-    Eouttime: Dict[Tuple[ConversionSubprocess,Year,Time],Positive]
-    Eintime: Dict[Tuple[ConversionSubprocess,Year,Time],Positive]
-    Enetgen: Dict[Tuple[Commodity,Year,Time],Positive]
-    Enetcons: Dict[Tuple[Commodity,Year,Time],Positive]
+    Eouttot: Dict[Tuple[ConversionSubprocess,Year],NonNegative]
+    Eintot: Dict[Tuple[ConversionSubprocess,Year],NonNegative]
+    Eouttime: Dict[Tuple[ConversionSubprocess,Year,Time],NonNegative]
+    Eintime: Dict[Tuple[ConversionSubprocess,Year,Time],NonNegative]
+    Enetgen: Dict[Tuple[Commodity,Year,Time],NonNegative]
+    Enetcons: Dict[Tuple[Commodity,Year,Time],NonNegative]
 
 @dataclass
 class StorageOutput:
-    E_storage_level: Dict[Tuple[ConversionSubprocess,Year,Time],Positive]
-    E_storage_level_max: Dict[Tuple[ConversionSubprocess,Year],Positive]
+    E_storage_level: Dict[Tuple[ConversionSubprocess,Year,Time],NonNegative]
+    E_storage_level_max: Dict[Tuple[ConversionSubprocess,Year],NonNegative]
 
 
 @dataclass

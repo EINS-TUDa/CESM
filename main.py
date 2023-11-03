@@ -8,6 +8,7 @@ Date: 18.10.2023
 from Core.inputparse import Parser
 from pathlib import Path
 from Core.model import Model
+import pickle
 
 
 techmap_dir_path = Path(".").joinpath("Data", "Techmap") # techmap directory path
@@ -23,6 +24,16 @@ model = Model(input)
 print("#### building model finished ###")
 print("#### solving model started ###")
 model.solve()
+
+# get and sava model output in a binay file
+output = model.get_output()
+with open("output.pkl", "wb") as f:
+    pickle.dump(output,f)
+
+# load tha outpout from the binary file
+with open("output.pkl", "rb") as f:
+    output = pickle.load(f)
+
 print("#### solving model finished ###")
 cs = list(input.dataset.conversion_subprocesses)[0]
 y = input.dataset.years[0]
