@@ -22,7 +22,7 @@ Download and Install the following softwares from their official websites:
 
 
 ## Documentation
-For documentation see the [documentation](link_to_the_docs)
+For documentation see the [documentation](https://cesm.readthedocs.io/en/latest/)
 or build it yourself using the following command:
 ```console
 > docs\make html
