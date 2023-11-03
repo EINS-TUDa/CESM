@@ -308,4 +308,46 @@ class Input:
     def __post_init__(self) -> None:
         self.param.availability.discount_factor = {y:(1 + self.param.globalparam.discount_rate)**(int(self.dataset.years[0]) - int(y)) for y in self.dataset.years}
         # self.param.validate(self.dataset)
-        
+
+
+
+@dataclass
+class CostOutput:
+    OPEX: Positive
+    CAPEX: Positive
+    TOTEX: Positive
+
+@dataclass
+class CO2Output:
+    Total_annual_co2_emission: Positive
+
+@dataclass
+class PowerOutput:
+    Cap_new: Dict[Tuple[ConversionSubprocess,Year],Positive]
+    Cap_active: Dict[Tuple[ConversionSubprocess,Year],Positive]
+    Cap_res: Dict[Tuple[ConversionSubprocess,Year],Positive]
+    Pin: Dict[Tuple[ConversionSubprocess,Year],Positive]
+    Pout: Dict[Tuple[ConversionSubprocess,Year],Positive]
+
+@dataclass
+class EnergyOutput:
+    Eouttot: Dict[Tuple[ConversionSubprocess,Year],Positive]
+    Eintot: Dict[Tuple[ConversionSubprocess,Year],Positive]
+    Eouttime: Dict[Tuple[ConversionSubprocess,Year,Time],Positive]
+    Eintime: Dict[Tuple[ConversionSubprocess,Year,Time],Positive]
+    Enetgen: Dict[Tuple[Commodity,Year,Time],Positive]
+    Enetcons: Dict[Tuple[Commodity,Year,Time],Positive]
+
+@dataclass
+class StorageOutput:
+    E_storage_level: Dict[Tuple[ConversionSubprocess,Year,Time],Positive]
+    E_storage_level_max: Dict[Tuple[ConversionSubprocess,Year],Positive]
+
+
+@dataclass
+class Output:
+    cost: CostOutput
+    co2: CO2Output
+    power: PowerOutput
+    energy: EnergyOutput
+    storage: StorageOutput
