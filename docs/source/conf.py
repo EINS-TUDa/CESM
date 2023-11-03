@@ -15,7 +15,6 @@ author = 'Sina Hajikazemi'
 
 # extensions = []
 extensions = [
-    'myst_parser',
     'sphinx.ext.mathjax'
 ]
 
