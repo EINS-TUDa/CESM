@@ -7,8 +7,8 @@
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
 project = 'Compact Energy System Modeling Tool'
-copyright = '2023, Sina Hajikazemi'
-author = 'Sina Hajikazemi'
+copyright = '2023, Sina Hajikazemi, Julia Barbosa'
+author = 'Sina Hajikazemi, Julia Barbosa'
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
