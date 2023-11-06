@@ -338,6 +338,45 @@ class Model():
     def solve(self) -> None:
         return self.model.optimize()
     
+    def get_output(self) -> dtcls.Output:
+        dataset = self.data.dataset # alias for readability
+        vars = self.vars # alias for readability
+        # Extract solution
+        cs_y_indexes = [(cs,y) for cs in dataset.conversion_subprocesses for y in dataset.years]
+        cs_y_t_indexes = [(cs,y,t) for cs in dataset.conversion_subprocesses for y in dataset.years for t in dataset.times]
+        co_y_t_indexes = [(co,y,t) for co in dataset.commodities for y in dataset.years for t in dataset.times]
+        cost = dtcls.CostOutput(OPEX=vars["OPEX"].X, CAPEX=vars["CAPEX"].X, TOTEX=vars["TOTEX"].X)
+        co2 = dtcls.CO2Output(Total_annual_co2_emission= {y:vars["Total_annual_co2_emission"][y].X for y in dataset.years})
+        power = dtcls.PowerOutput(
+            Cap_new= {(cs,y): vars["Cap_new"][cs,y].X for (cs,y) in cs_y_indexes},
+            Cap_active= {(cs,y): vars["Cap_new"][cs,y].X for (cs,y) in cs_y_indexes},
+            Cap_res= {(cs,y): vars["Cap_res"][cs,y].X for (cs,y) in cs_y_indexes},
+            Pin= {(cs,y,t): vars["Pin"][cs,y,t].X for (cs,y,t) in cs_y_t_indexes},
+            Pout= {(cs,y,t): vars["Pout"][cs,y,t].X for (cs,y,t) in cs_y_t_indexes},
+        )
+        energy = dtcls.EnergyOutput(
+            Eouttot= {(cs,y): vars["Eouttot"][cs,y].X for (cs,y) in cs_y_indexes},
+            Eintot= {(cs,y): vars["Eintot"][cs,y].X for (cs,y) in cs_y_indexes},
+            Eouttime= {(cs,y,t): vars["Eouttime"][cs,y,t].X for (cs,y,t) in cs_y_t_indexes},
+            Eintime= {(cs,y,t): vars["Eintime"][cs,y,t].X for (cs,y,t) in cs_y_t_indexes},
+            Enetgen= {(co,y,t): vars["Enetgen"][co,y,t].X for (co,y,t) in co_y_t_indexes},
+            Enetcons= {(co,y,t): vars["Enetcons"][co,y,t].X for (co,y,t) in co_y_t_indexes},
+        )
+        storage = dtcls.StorageOutput(
+            E_storage_level= {(cs,y,t): vars["E_storage_level"][cs,y,t].X for (cs,y,t) in cs_y_t_indexes},
+            E_storage_level_max= {(cs,y): vars["E_storage_level_max"][cs,y].X for (cs,y) in cs_y_indexes}
+        )
+
+        output = dtcls.Output(
+            cost= cost,
+            co2= co2,
+            power= power,
+            energy = energy,
+            storage= storage
+        )
+        return output
+
+    
     def save_results(self, sol_file_path: Path) -> None:
         self.model.write(str(sol_file_path))
 
