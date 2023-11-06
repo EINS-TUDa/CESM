@@ -1,8 +1,6 @@
 """
-quickstart script
-
-Author: Sina Hajikazemi
-Date: 18.10.2023
+quickstart script for visualization
+Date: 06.11.2023
 """
 
 from Core.inputparse import Parser
@@ -22,18 +20,11 @@ print("### parsing finished ###")
 print("#### building model started ###")
 model = Model(input)
 print("#### building model finished ###")
-print("#### solving model started ###")
-model.solve()
 
-# get and sava model output in a binary file
-Visual.save_output_pkl(output=model.get_output(),filename="output.pkl")
-
-# load tha outpout from the binary file
+# load the output from the binary file saved after solving the model in main.py
 output = Visual.read_output_pkl(filename="output.pkl")
 
-print("#### solving model finished ###")
-
+# Plot data
 cs = list(model.data.dataset.conversion_subprocesses)[0]
 co = list(model.data.dataset.commodities)[0]
-
 Visual.visualize_data("Total_annual_co2_emission", model, output, cs, co)
