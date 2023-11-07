@@ -8,7 +8,7 @@ Date: 18.10.2023
 from Core.inputparse import Parser
 from pathlib import Path
 from Core.model import Model
-import Core.visualize as Visual
+import pickle
 
 
 techmap_dir_path = Path(".").joinpath("Data", "Techmap") # techmap directory path
@@ -25,15 +25,18 @@ print("#### building model finished ###")
 print("#### solving model started ###")
 model.solve()
 
-# get and sava model output in a binary file
-Visual.save_output_pkl(output=model.get_output(),filename="output.pkl")
+# get and sava model output in a binay file
+output = model.get_output()
+with open("output.pkl", "wb") as f:
+    pickle.dump(output,f)
 
 # load tha outpout from the binary file
-output = Visual.read_output_pkl(filename="output.pkl")
+with open("output.pkl", "rb") as f:
+    output = pickle.load(f)
 
 print("#### solving model finished ###")
-
-cs = list(model.data.dataset.conversion_subprocesses)[0]
-co = list(model.data.dataset.commodities)[0]
-
-Visual.visualize_data("Total_annual_co2_emission", model, output, cs, co)
+cs = list(input.dataset.conversion_subprocesses)[0]
+y = input.dataset.years[0]
+print(cs)
+print(y)
+print(model.vars["Cap_new"][cs,y].X)
