@@ -14,7 +14,7 @@ import Core.visualize as Visual
 techmap_dir_path = Path(".").joinpath("Data", "Techmap") # techmap directory path
 ts_dir_path = Path(".").joinpath("Data", "TimeSeries") # time series directory path
 # parser = Parser("DEModel",techmap_dir_path=techmap_dir_path, ts_dir_path=ts_dir_path ,scenario = "Base4twk")
-parser = Parser("TestModel",techmap_dir_path=techmap_dir_path, ts_dir_path=ts_dir_path ,scenario = "Base")
+parser = Parser("DEModel",techmap_dir_path=techmap_dir_path, ts_dir_path=ts_dir_path ,scenario = "Base")
 print("### parsing started ###")
 parser.parse()
 input = parser.get_input()
@@ -24,16 +24,12 @@ model = Model(input)
 print("#### building model finished ###")
 print("#### solving model started ###")
 model.solve()
-
-# get and sava model output in a binary file
-Visual.save_output_pkl(output=model.get_output(),filename="output.pkl")
-
-# load tha outpout from the binary file
-output = Visual.read_output_pkl(filename="output.pkl")
-
 print("#### solving model finished ###")
 
-cs = list(model.data.dataset.conversion_subprocesses)[0]
-co = list(model.data.dataset.commodities)[0]
+print("#### saving model started ###")
+model.model.write("Output\model.lp")
+output=model.get_output()
+save_dict = {"input":input, "output":output}
+Visual.save_input_output(save_dict,filename="input_output.pkl")
+print("#### saving model finished ###")
 
-Visual.visualize_data("Total_annual_co2_emission", model, output, cs, co)
