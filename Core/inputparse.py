@@ -10,6 +10,7 @@ import pandas as pd
 import numpy as np
 import scipy.interpolate
 import Core.datacls as dtcls
+from pydantic import ValidationError
 
               
 
@@ -160,7 +161,12 @@ class Parser:
             if not pd.isna(cp):
                 cin = row["commodity_in"]
                 cout = row["commodity_out"]
-                cs = dtcls.ConversionSubprocess(dtcls.ConversionProcess(cp),dtcls.Commodity(cin),dtcls.Commodity(cout))
+                try:
+                    cs = dtcls.ConversionSubprocess(dtcls.ConversionProcess(cp),dtcls.Commodity(cin),dtcls.Commodity(cout))
+                except  ValidationError as e :
+                    print(f'Error in conversion subprocess {cp} definition')
+                    raise e
+
                 self.datasets["CS"].append(cs)
                 for p_name in param_names:
                     p = row[p_name]
