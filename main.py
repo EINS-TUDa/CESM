@@ -10,11 +10,13 @@ from pathlib import Path
 from Core.model import Model
 import pickle
 
+model_name = "TestModel" # model name
+model_name = "DEModel_V2" # model name
 
 techmap_dir_path = Path(".").joinpath("Data", "Techmap") # techmap directory path
 ts_dir_path = Path(".").joinpath("Data", "TimeSeries") # time series directory path
 # parser = Parser("DEModel",techmap_dir_path=techmap_dir_path, ts_dir_path=ts_dir_path ,scenario = "Base4twk")
-parser = Parser("TestModel",techmap_dir_path=techmap_dir_path, ts_dir_path=ts_dir_path ,scenario = "Base")
+parser = Parser(model_name,techmap_dir_path=techmap_dir_path, ts_dir_path=ts_dir_path ,scenario = "Base")
 print("### parsing started ###")
 parser.parse()
 input = parser.get_input()
