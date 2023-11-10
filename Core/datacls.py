@@ -10,6 +10,18 @@ PositiveInt = Annotated[int, Field(gt=0)]
 Unit_in0_in1 = Annotated[float, Field(ge=0, le=1)]
 Unit_ex0_in1 = Annotated[float, Field(gt=0, le=1)]
 
+# Helper functions to avoid lambda functions, which can't be stored in a pickle file
+def zero(y):
+        return 0
+def one(y):
+    return 1.0
+def hundred(y):
+        return 100
+def gen_default_fun(number):
+    def fun():
+        return number
+    return fun
+
 def scale_dict(d: Dict[Any, float], scale: float) -> Dict[Any, float]:
     for k,v in d.items():
         d[k] = v*scale
@@ -125,7 +137,7 @@ class CostParam:
     opex_cost_power: Dict[Tuple[ConversionSubprocess,Year], NonNegative] = field(default_factory=dict)
     capex_cost_power: Dict[Tuple[ConversionSubprocess,Year], NonNegative] = field(default_factory=dict)
     def __post_init__(self) -> None:
-        self.opex_cost_energy = defaultdict(self.zero, self.opex_cost_energy)
+        self.opex_cost_energy = defaultdict(default_fun_gen(0), self.opex_cost_energy)
         self.opex_cost_power = defaultdict(self.zero, self.opex_cost_power)
         self.capex_cost_power = defaultdict(self.zero, self.capex_cost_power)
     
@@ -225,11 +237,6 @@ class TechnologyParam:
         dataset.validate_cs(self.efficiency.keys())
         dataset.validate_cs(self.technical_lifetime.keys())
 
-    # Helper functions to avoid lambda functions, which can't be stored in a pickle file
-    def one(y):
-        return 1.0
-    def hundred(y):
-        return 100
 
 @dataclass
 class AvailabilityParam:
