@@ -55,7 +55,7 @@ Availability
 ~~~~~~~~~~~~
 - :math:`availability\_factor(CS,T)`: Availability factor of the subprocess :math:`cs` at time step :math:`t`. Range = [0,1]. default = 1. Dimension:-.
 - :math:`technical\_availability(CS)`: Technical Avaiability factor of the conversion subprocess :math:`cs`. Range = [0,1]. default = 1. 
-- :math:`output\_factor(CS,T)`: Share of the annual energy output supplied  of the conversion subprocess :math:`cs` at time step :math:`t` such that  :math:`\sum_{t \in T}Demand\_factor[cs,t]=1 \quad \forall cs \in CS`. Dimension: -. Range: Non-negative.
+- :math:`output\_factor(CS,T)`: Share of the annual energy output supplied  of the conversion subprocess :math:`cs` at time step :math:`t` such that  :math:`\sum_{t \in T}output\_factor[cs,t]=1 \quad \forall cs \in CS`. Dimension: -. Range: Non-negative.
 
 Fractions of generation and consumption
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -156,7 +156,7 @@ Power output
 .. math:: Pout[cs,y,t] = Pin[cs,y,t] * efficiency[cs] \quad \forall y\in Y, \forall t\in T, \forall cs\in CS 
     :label: efficiency_eq
 
-:eq:`efficiency_eq` the ration of output to input is equal to efficiency for each converssion process.
+:eq:`efficiency_eq` the ratio of output to input is equal to efficiency for each converssion process.
 
 .. math:: Pout[cs,y,t] \leq Cap\_active[cs,y] \quad \forall y\in Y, \forall t\in T, \forall cs\in CS
     :label: max_power_out_eq
@@ -238,10 +238,10 @@ Auxiliary Variables Linking
 Generation
 ~~~~~~~~~~
 
-.. math:: Eouttot[cs,y] <= max\_eout[cs,y] \quad \forall y\in Y, \forall cs\in CS
+.. math:: Eouttot[cs,y] \leq max\_eout[cs,y] \quad \forall y\in Y, \forall cs\in CS
     :label: max_energyout_eq
 
-.. math:: Eouttot[cs,y] >= min\_eout[cs,y] \quad \forall y\in Y, \forall cs\in CS
+.. math:: Eouttot[cs,y] \geq min\_eout[cs,y] \quad \forall y\in Y, \forall cs\in CS
     :label: min_energyout_eq
 
 .. math:: Eouttime[cs,t,y] = output\_factor[cs,t] * Eouttot[cs,y] \quad  \forall y\in Y, \forall t\in T,\forall cs\in CS
