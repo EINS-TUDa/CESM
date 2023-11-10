@@ -7,7 +7,7 @@ Sets
 - :math:`Y`: Ordered years.
 - :math:`CO`: commodities.
 - :math:`CP`: conversion process.
-- :math:`CS`: conversion subprocess which is determined buy the tuple :math:`(cp\in CP, cin \in CO, cout \in CO)`. Every conversion process has at least one conversion subprocess.
+- :math:`CS`: conversion subprocess which is determined by the tuple :math:`(cp\in CP, cin \in CO, cout \in CO)`. Every conversion process has at least one conversion subprocess.
 - :math:`SCS`: is a subset of :math:`CS` that contains storage conversion subprocesses.
 
 Parameters
@@ -18,7 +18,7 @@ Parameters
 Global
 ~~~~~~
 - :math:`dt`: time step size. Dimension: Time. Range: Positive.
-- :math:`w`: weight of each time step in relation to the whole year. Range: Positive. default = 1.
+- :math:`w`: weight of each time step withim the whole year. Range: Positive. default = 1.
 - :math:`discount\_rate`: The discount rate is the interest rate used to calculate the present value of future cash flows from a project or investment. Dimension: -. Range: Non-negative.
 
 
@@ -54,8 +54,8 @@ Technology
 Availability
 ~~~~~~~~~~~~
 - :math:`availability\_factor(CS,T)`: Availability factor of the subprocess :math:`cs` at time step :math:`t`. Range = [0,1]. default = 1. Dimension:-.
-- :math:`technical\_availability(CS)`: Technical Avaiability factor of the conversion subprocess :math:`cs`. Range = [0,1]. default = 1. 
-- :math:`output\_factor(CS,T)`: Share of the annual energy output supplied  of the conversion subprocess :math:`cs` at time step :math:`t` such that  :math:`\sum_{t \in T}Demand\_factor[cs,t]=1 \quad \forall cs \in CS`. Dimension: -. Range: Non-negative.
+- :math:`technical\_availability(CS)`: Technical Availability factor of the conversion subprocess :math:`cs`. Range = [0,1]. default = 1. 
+- :math:`output\_factor(CS,T)`: Share of the annual energy output supplied of the conversion subprocess :math:`cs` at time step :math:`t` such that :math:`\sum_{t \in T}Demand\_factor[cs,t]=1 \quad \forall cs \in CS`. Dimension: -. Range: Non-negative.
 
 Fractions of generation and consumption
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -71,7 +71,7 @@ For `out\_frac\_min(CS,Y)` and `out\_frac\_max(CS,Y)` see :ref:`CHP <CHP>` examp
 
 Storage
 ~~~~~~~
-- :math:`c\_rate(CS)`: indicates the discgarge and charging rate of the storage conversion subprocess :math:`cs`. 1C means that the full storage can be discharged in one hour. Range: Positive. Dimension: Power. 
+- :math:`c\_rate(CS)`: indicates the discharge and charging rate of the storage conversion subprocess :math:`cs`. 1C means that the full storage can be discharged in one hour. Range: Positive. Dimension: Power. 
 - :math:`efficiency\_charge(CS)`: Storage charging efficiency of conversion subprocess :math:`cs`. Dimension: -. Range = (0,1]. default = 1. 
 
 Variables
@@ -156,12 +156,12 @@ Power output
 .. math:: Pout[cs,y,t] = Pin[cs,y,t] * efficiency[cs] \quad \forall y\in Y, \forall t\in T, \forall cs\in CS 
     :label: efficiency_eq
 
-:eq:`efficiency_eq` the ration of output to input is equal to efficiency for each converssion process.
+:eq:`efficiency_eq` the ratio of output to input is equal to efficiency for each conversion process.
 
 .. math:: Pout[cs,y,t] \leq Cap\_active[cs,y] \quad \forall y\in Y, \forall t\in T, \forall cs\in CS
     :label: max_power_out_eq
 
-:eq:`max_power_out_eq` The output is limited by the capacity of the converssion process.
+:eq:`max_power_out_eq` The output is limited by the capacity of the conversion process.
 
 .. math:: Pout[cs,y,t] \leq Cap\_active[cs,y] * availability\_factor[cs,t] \quad  \forall y\in Y,\forall t\in T, \forall cs\in CS \setminus SCS
     :label: re_availability_eq

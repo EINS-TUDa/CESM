@@ -17,7 +17,7 @@ Tabs
     * annual_co2_limit: It is an annual parameter and is in the form explained in the :ref:`annual-value` section.
     * co2_price: the default value is 0.
     * from_year: the modeling time starts from this year.
-    * until_year: the modeling time ends at this year.
+    * until_year: the modeling time ends this year.
     * year_stpep: the step size of the time series.
     * TSS: Time-Series Selection. The name should match one of the items in the TSS tab.
 * Commodity
@@ -39,14 +39,14 @@ Tabs
 Time Dependent Parameters
 -------------------------
 
-Reads the corresponding itmes from the specified data files. The items which are referenced in the times series selection are only considered in the simulation.
+Reads the corresponding items from the specified data files. The items that are referenced in the times series selection are only considered in the simulation.
 
 .. _annual-value:
 
 Annual Parameters
 -------------------------
 
-* sinagle value: The value is the same for all the years.
+* single value: The value is the same for all the years.
 * linear interpolation
     * [2015 5; 2020 6;2030 7;2050 10]: 5 in 2015 and the previous years and 10 in 2050 and the next years. The value for the years between 2015 and 2050 is linearly interpolated.
     * [2015 0;2016 NaN]: It means 0 in 2015 and the previous years and the value is not specified for the next years.
