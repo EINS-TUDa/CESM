@@ -1,12 +1,12 @@
 # Compact Energy System Modeling Tool (CESM)
-This is a compact energy system modeling tool that can model different forms of the energy carriers and the conversion processes that convert them to each other. 
+This is a compact energy system modeling tool that can model different forms of energy carriers and the conversion processes that convert them to each other. 
 The optimal output of the model determines how much should be invested in each part of the energy system to meet the energy demand and minimize costs.
 
 An example of the German energy system is also provided. The results of the model are compatible with the results of the paper "Barbosa, Julia, Christopher Ripp, and Florian Steinke. Accessible Modeling of the German Energy Transition: An Open, Compact, and Validated Model. Energies 14, no. 23 (2021)"
 
 
 ## Installation
-Download and Install the following softwares from their official websites:
+Download and Install the following software from their official websites:
 - python (10 or above)
 - Gurobi
 
@@ -27,7 +27,7 @@ Download and Install the following softwares from their official websites:
 You can find our documentation [online](https://cesm.readthedocs.io/en/latest/)
 or build it yourself:
 
-1. Install documentarion requirements:
+1. Install documentation requirements:
 ```console 
 > pip install -r docs\requirements.txt
 ```
@@ -36,7 +36,7 @@ or build it yourself:
 > docs\make html
 ```
 
-Then you can open the documenation from *docs/build/html/index.html*.
+Then you can open the documentation from *docs/build/html/index.html*.
 ## Quick Start
 
 
@@ -46,7 +46,7 @@ Then you can open the documenation from *docs/build/html/index.html*.
 
 ## Roadmap
 - [ ] Tests
-- [ ] Desiging simple examples
+- [ ] Design simple examples
 - [ ] Saving the results
 - [ ] Postprocessing code
 - [ ] Implementing the model in other libraries(Pyomo, AMPL, ...)
