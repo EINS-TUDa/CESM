@@ -10,17 +10,15 @@ PositiveInt = Annotated[int, Field(gt=0)]
 Unit_in0_in1 = Annotated[float, Field(ge=0, le=1)]
 Unit_ex0_in1 = Annotated[float, Field(gt=0, le=1)]
 
-# Helper functions to avoid lambda functions, which can't be stored in a pickle file
-def zero(y):
-        return 0
-def one(y):
+
+### Helper functions to avoid lambda functions, which can't be stored in a pickle file
+def helper_zero():
+    return 0
+def one():
     return 1.0
-def hundred(y):
-        return 100
-def gen_default_fun(number):
-    def fun():
-        return number
-    return fun
+def hundred():
+    return 100    
+###
 
 def scale_dict(d: Dict[Any, float], scale: float) -> Dict[Any, float]:
     for k,v in d.items():
@@ -137,9 +135,9 @@ class CostParam:
     opex_cost_power: Dict[Tuple[ConversionSubprocess,Year], NonNegative] = field(default_factory=dict)
     capex_cost_power: Dict[Tuple[ConversionSubprocess,Year], NonNegative] = field(default_factory=dict)
     def __post_init__(self) -> None:
-        self.opex_cost_energy = defaultdict(default_fun_gen(0), self.opex_cost_energy)
-        self.opex_cost_power = defaultdict(self.zero, self.opex_cost_power)
-        self.capex_cost_power = defaultdict(self.zero, self.capex_cost_power)
+        self.opex_cost_energy = defaultdict(helper_zero, self.opex_cost_energy)
+        self.opex_cost_power = defaultdict(helper_zero, self.opex_cost_power)
+        self.capex_cost_power = defaultdict(helper_zero, self.capex_cost_power)
     
     def validate(self, dataset:Dataset) -> None:
         dataset.validate_cs([cs for (cs,y) in self.capex_cost_power.keys()])
@@ -154,18 +152,14 @@ class CostParam:
         scale_dict(self.opex_cost_power, units.cost_power)
         scale_dict(self.capex_cost_power, units.cost_power)
 
-    # Helper function to avoid lambda functions, which can't be stored in a pickle file
-    def zero(y):
-        return 0
-
 @dataclass
 class CO2Param:
     spec_co2: Dict[ConversionSubprocess, NonNegative] = field(default_factory=dict)
     annual_co2_limit: Dict[Year, NonNegative] = field(default_factory=dict)
     co2_price: Dict[Year, NonNegative] = field(default_factory=dict)
     def __post_init__(self) -> None:
-        self.spec_co2 = defaultdict(self.zero, self.spec_co2)
-        self.co2_price = defaultdict(self.zero, self.co2_price)
+        self.spec_co2 = defaultdict(helper_zero, self.spec_co2)
+        self.co2_price = defaultdict(helper_zero, self.co2_price)
     
     def validate(self, dataset:Dataset) -> None:
         dataset.validate_cs(self.spec_co2.keys())
@@ -174,10 +168,6 @@ class CO2Param:
     
     def scale(self, units: Units) -> None:
         scale_dict(self.spec_co2, units.co2_spec)
-
-    # Helper function to avoid lambda functions, which can't be stored in a pickle file
-    def zero(y):
-        return 0
 
 @dataclass
 class EnergyParam:
@@ -190,7 +180,6 @@ class EnergyParam:
         dataset.validate_cs([cs for (cs,y) in self.min_eout.keys()])
         dataset.validate_y([y for (cs,y) in self.min_eout.keys()])
 
-    
     def scale(self, units: Units) -> None:
         scale_dict(self.max_eout, units.energy)
         scale_dict(self.min_eout, units.energy)
@@ -202,7 +191,7 @@ class CapacityParam:
     cap_res_max: Dict[Tuple[ConversionSubprocess,Year],NonNegative] = field(default_factory=dict)
     cap_res_min: Dict[Tuple[ConversionSubprocess,Year],NonNegative] = field(default_factory=dict)
     def __post_init__(self) -> None:
-        self.cap_res_max = defaultdict(self.zero, self.cap_res_max)
+        self.cap_res_max = defaultdict(helper_zero, self.cap_res_max)
     
     def validate(self, dataset:Dataset) -> None:
         dataset.validate_cs([cs for (cs,y) in self.cap_min.keys()])
@@ -219,24 +208,18 @@ class CapacityParam:
         scale_dict(self.cap_max, units.power)
         scale_dict(self.cap_res_min, units.power)
         scale_dict(self.cap_res_max, units.power)
-    
-    # Helper function to avoid lambda functions, which can't be stored in a pickle file
-    def zero(y):
-        return 0
-
 
 @dataclass                                    
 class TechnologyParam:
     efficiency: Dict[ConversionSubprocess, NonNegative] = field(default_factory=dict)
     technical_lifetime: Dict[ConversionSubprocess, Positive] = field(default_factory=dict)
     def __post_init__(self) -> None:
-        self.efficiency = defaultdict(self.one, self.efficiency)
-        self.technical_lifetime = defaultdict(self.hundred, {key:round(value) for key,value in self.technical_lifetime.items()})
+        self.efficiency = defaultdict(one, self.efficiency)
+        self.technical_lifetime = defaultdict(hundred, {key:round(value) for key,value in self.technical_lifetime.items()})
     
     def validate(self, dataset:Dataset) -> None:
         dataset.validate_cs(self.efficiency.keys())
         dataset.validate_cs(self.technical_lifetime.keys())
-
 
 @dataclass
 class AvailabilityParam:
@@ -245,7 +228,7 @@ class AvailabilityParam:
     demand_factor: Dict[Tuple[ConversionSubprocess,Time], NonNegative] = field(default_factory=dict)
     discount_factor: Dict[Year,float] = field(init=False) # value is set in Input class
     def __post_init__(self) -> None:
-        self.technical_availability = defaultdict(self.one, self.technical_availability)
+        self.technical_availability = defaultdict(one, self.technical_availability)
         self._validate_demand_factor()
     def __repr__(self) -> str:
         return str(self.availability_factor) + str(self.technical_availability) + str(self.demand_factor)
@@ -263,11 +246,6 @@ class AvailabilityParam:
         dataset.validate_cs([cs for (cs,t) in self.demand_factor.keys()])
         dataset.validate_t([t for (cs,t) in self.demand_factor.keys()])
         dataset.validate_y(self.discount_factor.keys())
-    
-    # Helper function to avoid lambda functions, which can't be stored in a pickle file
-    def one(y):
-        return 1.0
-
 
 @dataclass
 class FractionParam:
@@ -291,15 +269,11 @@ class StorageParam:
     c_rate: Dict[ConversionSubprocess, Positive] = field(default_factory=dict)
     efficiency_charge: Dict[ConversionSubprocess, Unit_ex0_in1] = field(default_factory=dict)
     def __post_init__(self) -> None:
-        self.efficiency_charge = defaultdict(self.one, self.efficiency_charge)
+        self.efficiency_charge = defaultdict(one, self.efficiency_charge)
 
     def validate(self, dataset:Dataset) -> None:
         dataset.validate_cs(self.c_rate.keys())
         dataset.validate_cs(self.efficiency_charge.keys())
-
-    # Helper function to avoid lambda functions, which can't be stored in a pickle file
-    def one(y):
-        return 1.0
 
 @dataclass
 class Param:

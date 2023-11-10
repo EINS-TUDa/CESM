@@ -26,12 +26,21 @@ print("#### solving model started ###")
 model.solve()
 print("#### solving model finished ###")
 
+output = model.get_output()
+
+# ##### Uncomment to save the model, the input and the output ######
 print("#### saving model started ###")
 model.model.write("Output\model.lp")
-output=model.get_output()
 save_dict = {"input":input, "output":output}
 Visual.save_input_output(save_dict,filename="input_output.pkl")
 print("#### saving model finished ###")
 
+# ##### Uncomment to load input and output from an already solved model ######
+input, output = Visual.read_input_output(filename="input_output.pkl")
 
+# ##### Uncomment to visualize a chosen variable ######
+# Chose a conversion_subprocess and a commodity
+cs = list(input.dataset.conversion_subprocesses)[0]
+co = list(input.dataset.commodities)[0]
+Visual.visualize_data("Pin", input, output, cs, co)
 
