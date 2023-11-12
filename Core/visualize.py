@@ -16,7 +16,6 @@ def save_input_output(save_dict: dict, filename):
         filename: name of the file as string
     Return: binary pkl.file with values of output of the model
     """
-    filename = ".\Output\\" + filename
     with open(filename, "wb") as f:
         pickle.dump(save_dict,f)
 
@@ -30,7 +29,6 @@ def read_input_output(filename):
     Return: 
         output: output from the Model as in the Output dataclass
     """
-    filename = ".\Output\\" + filename
     with open(filename, "rb") as f:
         save_dict = pickle.load(f)
     input = save_dict["input"]
