@@ -1,10 +1,8 @@
 #import local files
-from Core.model import Model
-from Core.datacls import Input, Output, ConversionSubprocess, Commodity, Year, Time
+from Core.datacls import Input, Output, ConversionSubprocess, Commodity
 
 #import libraries
 import matplotlib.pyplot as plt
-import pandas as pd
 import pickle
 
 def save_input_output(save_dict: dict, filename):
