@@ -143,3 +143,6 @@ dmypy.json
 
 # Drawio backup files
 *.drawio.bkp
+
+# pickle
+*.pkl

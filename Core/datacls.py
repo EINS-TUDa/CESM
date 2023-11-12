@@ -1,14 +1,26 @@
-from typing import Dict,List,Tuple,Set, Annotated, Any
+from typing import Dict,List,Tuple, Annotated, Any
 from collections import defaultdict
 from pydantic import Field
 from dataclasses import field
 from pydantic.dataclasses import dataclass
+from gurobipy import GRB
 
+OutputNonNegative = Annotated[float, Field(ge=-1e-5)]
 NonNegative = Annotated[float, Field(ge=0)]
 Positive = Annotated[float, Field(gt=0)]
 PositiveInt = Annotated[int, Field(gt=0)]
 Unit_in0_in1 = Annotated[float, Field(ge=0, le=1)]
 Unit_ex0_in1 = Annotated[float, Field(gt=0, le=1)]
+
+
+### Helper functions to avoid lambda functions, which can't be stored in a pickle file
+def helper_zero():
+    return 0
+def one():
+    return 1.0
+def hundred():
+    return 100    
+###
 
 def scale_dict(d: Dict[Any, float], scale: float) -> Dict[Any, float]:
     for k,v in d.items():
@@ -77,10 +89,10 @@ class Units:
 class Dataset:
     times: List[Time]
     years: List[Year]
-    commodities: Set[Commodity]
-    conversion_processes: Set[ConversionProcess]
-    conversion_subprocesses: Set[ConversionSubprocess]
-    storage_cs: Set[ConversionSubprocess]
+    commodities: List[Commodity]
+    conversion_processes: List[ConversionProcess]
+    conversion_subprocesses: List[ConversionSubprocess]
+    storage_cs: List[ConversionSubprocess]
 
     def __post_init__(self) -> None:
         self._validate_conversion_subprocesses()
@@ -94,17 +106,17 @@ class Dataset:
             if cs.cout not in self.commodities:
                 raise ValueError(f"Commodity {cs.cout} is not defined")
 
-    def validate_y(self, years_set:Set[Year]) -> None:
+    def validate_y(self, years_set:List[Year]) -> None:
         for y in years_set:
             if y not in self.years:
                 raise ValueError(f"Year {y} is not defined")
     
-    def validate_t(self, time_set:Set[Time]) -> None:
+    def validate_t(self, time_set:List[Time]) -> None:
         for t in time_set:
             if t not in self.times:
                 raise ValueError(f"Time {t} is not defined")
             
-    def validate_cs(self, cs_set:Set[ConversionSubprocess]) -> None:
+    def validate_cs(self, cs_set:List[ConversionSubprocess]) -> None:
         for cs in cs_set:
             if cs.cp not in self.conversion_processes:
                 raise ValueError(f"Conversion process {cs.cp} is not defined")
@@ -125,9 +137,9 @@ class CostParam:
     opex_cost_power: Dict[Tuple[ConversionSubprocess,Year], NonNegative] = field(default_factory=dict)
     capex_cost_power: Dict[Tuple[ConversionSubprocess,Year], NonNegative] = field(default_factory=dict)
     def __post_init__(self) -> None:
-        self.opex_cost_energy = defaultdict(lambda: 0, self.opex_cost_energy)
-        self.opex_cost_power = defaultdict(lambda: 0, self.opex_cost_power)
-        self.capex_cost_power = defaultdict(lambda: 0, self.capex_cost_power)
+        self.opex_cost_energy = defaultdict(helper_zero, self.opex_cost_energy)
+        self.opex_cost_power = defaultdict(helper_zero, self.opex_cost_power)
+        self.capex_cost_power = defaultdict(helper_zero, self.capex_cost_power)
     
     def validate(self, dataset:Dataset) -> None:
         dataset.validate_cs([cs for (cs,y) in self.capex_cost_power.keys()])
@@ -148,8 +160,8 @@ class CO2Param:
     annual_co2_limit: Dict[Year, NonNegative] = field(default_factory=dict)
     co2_price: Dict[Year, NonNegative] = field(default_factory=dict)
     def __post_init__(self) -> None:
-        self.spec_co2 = defaultdict(lambda: 0, self.spec_co2)
-        self.co2_price = defaultdict(lambda: 0, self.co2_price)
+        self.spec_co2 = defaultdict(helper_zero, self.spec_co2)
+        self.co2_price = defaultdict(helper_zero, self.co2_price)
     
     def validate(self, dataset:Dataset) -> None:
         dataset.validate_cs(self.spec_co2.keys())
@@ -170,7 +182,6 @@ class EnergyParam:
         dataset.validate_cs([cs for (cs,y) in self.min_eout.keys()])
         dataset.validate_y([y for (cs,y) in self.min_eout.keys()])
 
-    
     def scale(self, units: Units) -> None:
         scale_dict(self.max_eout, units.energy)
         scale_dict(self.min_eout, units.energy)
@@ -182,7 +193,7 @@ class CapacityParam:
     cap_res_max: Dict[Tuple[ConversionSubprocess,Year],NonNegative] = field(default_factory=dict)
     cap_res_min: Dict[Tuple[ConversionSubprocess,Year],NonNegative] = field(default_factory=dict)
     def __post_init__(self) -> None:
-        self.cap_res_max = defaultdict(lambda: 0, self.cap_res_max)
+        self.cap_res_max = defaultdict(helper_zero, self.cap_res_max)
     
     def validate(self, dataset:Dataset) -> None:
         dataset.validate_cs([cs for (cs,y) in self.cap_min.keys()])
@@ -200,14 +211,13 @@ class CapacityParam:
         scale_dict(self.cap_res_min, units.power)
         scale_dict(self.cap_res_max, units.power)
 
-
 @dataclass                                    
 class TechnologyParam:
     efficiency: Dict[ConversionSubprocess, NonNegative] = field(default_factory=dict)
     technical_lifetime: Dict[ConversionSubprocess, Positive] = field(default_factory=dict)
     def __post_init__(self) -> None:
-        self.efficiency = defaultdict(lambda: 1.0, self.efficiency)
-        self.technical_lifetime = defaultdict(lambda: 100, {key:round(value) for key,value in self.technical_lifetime.items()})
+        self.efficiency = defaultdict(one, self.efficiency)
+        self.technical_lifetime = defaultdict(hundred, {key:round(value) for key,value in self.technical_lifetime.items()})
     
     def validate(self, dataset:Dataset) -> None:
         dataset.validate_cs(self.efficiency.keys())
@@ -220,7 +230,7 @@ class AvailabilityParam:
     demand_factor: Dict[Tuple[ConversionSubprocess,Time], NonNegative] = field(default_factory=dict)
     discount_factor: Dict[Year,float] = field(init=False) # value is set in Input class
     def __post_init__(self) -> None:
-        self.technical_availability = defaultdict(lambda: 1.0, self.technical_availability)
+        self.technical_availability = defaultdict(one, self.technical_availability)
         self._validate_demand_factor()
     def __repr__(self) -> str:
         return str(self.availability_factor) + str(self.technical_availability) + str(self.demand_factor)
@@ -238,7 +248,6 @@ class AvailabilityParam:
         dataset.validate_cs([cs for (cs,t) in self.demand_factor.keys()])
         dataset.validate_t([t for (cs,t) in self.demand_factor.keys()])
         dataset.validate_y(self.discount_factor.keys())
-
 
 @dataclass
 class FractionParam:
@@ -262,7 +271,7 @@ class StorageParam:
     c_rate: Dict[ConversionSubprocess, Positive] = field(default_factory=dict)
     efficiency_charge: Dict[ConversionSubprocess, Unit_ex0_in1] = field(default_factory=dict)
     def __post_init__(self) -> None:
-        self.efficiency_charge = defaultdict(lambda: 1.0, self.efficiency_charge)
+        self.efficiency_charge = defaultdict(one, self.efficiency_charge)
 
     def validate(self, dataset:Dataset) -> None:
         dataset.validate_cs(self.c_rate.keys())
@@ -313,35 +322,35 @@ class Input:
 
 @dataclass
 class CostOutput:
-    OPEX: NonNegative
-    CAPEX: NonNegative
-    TOTEX: NonNegative
+    OPEX: OutputNonNegative
+    CAPEX: OutputNonNegative
+    TOTEX: OutputNonNegative
 
 @dataclass
 class CO2Output:
-    Total_annual_co2_emission: Dict[Year,NonNegative]
+    Total_annual_co2_emission: Dict[Year,OutputNonNegative]
 
 @dataclass
 class PowerOutput:
-    Cap_new: Dict[Tuple[ConversionSubprocess,Year],NonNegative]
-    Cap_active: Dict[Tuple[ConversionSubprocess,Year],NonNegative]
-    Cap_res: Dict[Tuple[ConversionSubprocess,Year],NonNegative]
-    Pin: Dict[Tuple[ConversionSubprocess,Year,Time],NonNegative]
-    Pout: Dict[Tuple[ConversionSubprocess,Year,Time],NonNegative]
+    Cap_new: Dict[Tuple[ConversionSubprocess,Year],OutputNonNegative]
+    Cap_active: Dict[Tuple[ConversionSubprocess,Year],OutputNonNegative]
+    Cap_res: Dict[Tuple[ConversionSubprocess,Year],OutputNonNegative]
+    Pin: Dict[Tuple[ConversionSubprocess,Year,Time],OutputNonNegative]
+    Pout: Dict[Tuple[ConversionSubprocess,Year,Time],OutputNonNegative]
 
 @dataclass
 class EnergyOutput:
-    Eouttot: Dict[Tuple[ConversionSubprocess,Year],NonNegative]
-    Eintot: Dict[Tuple[ConversionSubprocess,Year],NonNegative]
-    Eouttime: Dict[Tuple[ConversionSubprocess,Year,Time],NonNegative]
-    Eintime: Dict[Tuple[ConversionSubprocess,Year,Time],NonNegative]
-    Enetgen: Dict[Tuple[Commodity,Year,Time],NonNegative]
-    Enetcons: Dict[Tuple[Commodity,Year,Time],NonNegative]
+    Eouttot: Dict[Tuple[ConversionSubprocess,Year],OutputNonNegative]
+    Eintot: Dict[Tuple[ConversionSubprocess,Year],OutputNonNegative]
+    Eouttime: Dict[Tuple[ConversionSubprocess,Year,Time],OutputNonNegative]
+    Eintime: Dict[Tuple[ConversionSubprocess,Year,Time],OutputNonNegative]
+    Enetgen: Dict[Tuple[Commodity,Year,Time],OutputNonNegative]
+    Enetcons: Dict[Tuple[Commodity,Year,Time],OutputNonNegative]
 
 @dataclass
 class StorageOutput:
-    E_storage_level: Dict[Tuple[ConversionSubprocess,Year,Time],NonNegative]
-    E_storage_level_max: Dict[Tuple[ConversionSubprocess,Year],NonNegative]
+    E_storage_level: Dict[Tuple[ConversionSubprocess,Year,Time],OutputNonNegative]
+    E_storage_level_max: Dict[Tuple[ConversionSubprocess,Year],OutputNonNegative]
 
 
 @dataclass
