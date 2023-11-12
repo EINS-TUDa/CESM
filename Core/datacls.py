@@ -1,4 +1,4 @@
-from typing import Dict,List,Tuple,Set, Annotated, Any
+from typing import Dict,List,Tuple, Annotated, Any
 from collections import defaultdict
 from pydantic import Field
 from dataclasses import field
@@ -89,10 +89,10 @@ class Units:
 class Dataset:
     times: List[Time]
     years: List[Year]
-    commodities: Set[Commodity]
-    conversion_processes: Set[ConversionProcess]
-    conversion_subprocesses: Set[ConversionSubprocess]
-    storage_cs: Set[ConversionSubprocess]
+    commodities: List[Commodity]
+    conversion_processes: List[ConversionProcess]
+    conversion_subprocesses: List[ConversionSubprocess]
+    storage_cs: List[ConversionSubprocess]
 
     def __post_init__(self) -> None:
         self._validate_conversion_subprocesses()
@@ -106,17 +106,17 @@ class Dataset:
             if cs.cout not in self.commodities:
                 raise ValueError(f"Commodity {cs.cout} is not defined")
 
-    def validate_y(self, years_set:Set[Year]) -> None:
+    def validate_y(self, years_set:List[Year]) -> None:
         for y in years_set:
             if y not in self.years:
                 raise ValueError(f"Year {y} is not defined")
     
-    def validate_t(self, time_set:Set[Time]) -> None:
+    def validate_t(self, time_set:List[Time]) -> None:
         for t in time_set:
             if t not in self.times:
                 raise ValueError(f"Time {t} is not defined")
             
-    def validate_cs(self, cs_set:Set[ConversionSubprocess]) -> None:
+    def validate_cs(self, cs_set:List[ConversionSubprocess]) -> None:
         for cs in cs_set:
             if cs.cp not in self.conversion_processes:
                 raise ValueError(f"Conversion process {cs.cp} is not defined")

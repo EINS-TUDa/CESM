@@ -97,11 +97,11 @@ class Parser:
             
     def read_cp(self,tmap) -> None:
         df = pd.read_excel(tmap,"ConversionProcess")
-        self.datasets["CP"] = {dtcls.ConversionProcess(cp.strip()) for cp in df["conversion_process_name"] if not pd.isna(cp)}
+        self.datasets["CP"] = list(dict.fromkeys([dtcls.ConversionProcess(cp.strip()) for cp in df["conversion_process_name"] if not pd.isna(cp)]))
         
     def read_co(self, tmap) -> None:
         df = pd.read_excel(tmap,"Commodity")
-        self.datasets["CO"] = {dtcls.Commodity(co) for co in df["commodity_name"].str.strip()}
+        self.datasets["CO"] = list(dict.fromkeys([dtcls.Commodity(co) for co in df["commodity_name"].str.strip()]))
     
     def read_scenario(self, tmap):
         df = pd.read_excel(tmap,"Scenario")
@@ -305,7 +305,7 @@ class Parser:
             commodities = self.datasets["CO"],
             conversion_processes = self.datasets["CP"],
             conversion_subprocesses= self.datasets["CS"],
-            storage_cs = {cs for cs in self.params['is_storage'] if self.params['is_storage'][cs]}
+            storage_cs = [cs for cs in self.params['is_storage'] if self.params['is_storage'][cs]]
         )
 
         input = dtcls.Input(dataset=dataset, param=param)
