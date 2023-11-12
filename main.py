@@ -8,7 +8,7 @@ Date: 18.10.2023
 from Core.inputparse import Parser
 from pathlib import Path
 from Core.model import Model
-import Core.visualize as Visual
+import Core.visualize as visual
 
 
 techmap_dir_path = Path(".").joinpath("Data", "Techmap") # techmap directory path
@@ -28,19 +28,19 @@ print("#### solving model finished ###")
 
 output = model.get_output()
 
-# ##### Uncomment to save the model, the input and the output ######
+# ##### Uncomment to save the input and the output ######
 print("#### saving model started ###")
-model.model.write("Output\model.lp")
 save_dict = {"input":input, "output":output}
-Visual.save_input_output(save_dict,filename="input_output.pkl")
+visual.save_input_output(save_dict,filename="input_output.pkl")
 print("#### saving model finished ###")
 
-# ##### Uncomment to load input and output from an already solved model ######
-input, output = Visual.read_input_output(filename="input_output.pkl")
+# ##### Uncomment to load input and output from an already saved model ######
+input, output = visual.read_input_output(filename="input_output.pkl")
 
 # ##### Uncomment to visualize a chosen variable ######
-# Chose a conversion_subprocess and a commodity
+# Choose a conversion_subprocess and a commodity
 cs = list(input.dataset.conversion_subprocesses)[0]
 co = list(input.dataset.commodities)[0]
-Visual.visualize_data("Pin", input, output, cs, co)
+# draw the bar plot
+visual.visualize_data("Pin", input, output, cs, co)
 
