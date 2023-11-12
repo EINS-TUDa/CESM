@@ -3,7 +3,9 @@ from collections import defaultdict
 from pydantic import Field
 from dataclasses import field
 from pydantic.dataclasses import dataclass
+from gurobipy import GRB
 
+OutputNonNegative = Annotated[float, Field(ge=-1e-5)]
 NonNegative = Annotated[float, Field(ge=0)]
 Positive = Annotated[float, Field(gt=0)]
 PositiveInt = Annotated[int, Field(gt=0)]
@@ -320,35 +322,35 @@ class Input:
 
 @dataclass
 class CostOutput:
-    OPEX: NonNegative
-    CAPEX: NonNegative
-    TOTEX: NonNegative
+    OPEX: OutputNonNegative
+    CAPEX: OutputNonNegative
+    TOTEX: OutputNonNegative
 
 @dataclass
 class CO2Output:
-    Total_annual_co2_emission: Dict[Year,NonNegative]
+    Total_annual_co2_emission: Dict[Year,OutputNonNegative]
 
 @dataclass
 class PowerOutput:
-    Cap_new: Dict[Tuple[ConversionSubprocess,Year],NonNegative]
-    Cap_active: Dict[Tuple[ConversionSubprocess,Year],NonNegative]
-    Cap_res: Dict[Tuple[ConversionSubprocess,Year],NonNegative]
-    Pin: Dict[Tuple[ConversionSubprocess,Year,Time],NonNegative]
-    Pout: Dict[Tuple[ConversionSubprocess,Year,Time],NonNegative]
+    Cap_new: Dict[Tuple[ConversionSubprocess,Year],OutputNonNegative]
+    Cap_active: Dict[Tuple[ConversionSubprocess,Year],OutputNonNegative]
+    Cap_res: Dict[Tuple[ConversionSubprocess,Year],OutputNonNegative]
+    Pin: Dict[Tuple[ConversionSubprocess,Year,Time],OutputNonNegative]
+    Pout: Dict[Tuple[ConversionSubprocess,Year,Time],OutputNonNegative]
 
 @dataclass
 class EnergyOutput:
-    Eouttot: Dict[Tuple[ConversionSubprocess,Year],NonNegative]
-    Eintot: Dict[Tuple[ConversionSubprocess,Year],NonNegative]
-    Eouttime: Dict[Tuple[ConversionSubprocess,Year,Time],NonNegative]
-    Eintime: Dict[Tuple[ConversionSubprocess,Year,Time],NonNegative]
-    Enetgen: Dict[Tuple[Commodity,Year,Time],NonNegative]
-    Enetcons: Dict[Tuple[Commodity,Year,Time],NonNegative]
+    Eouttot: Dict[Tuple[ConversionSubprocess,Year],OutputNonNegative]
+    Eintot: Dict[Tuple[ConversionSubprocess,Year],OutputNonNegative]
+    Eouttime: Dict[Tuple[ConversionSubprocess,Year,Time],OutputNonNegative]
+    Eintime: Dict[Tuple[ConversionSubprocess,Year,Time],OutputNonNegative]
+    Enetgen: Dict[Tuple[Commodity,Year,Time],OutputNonNegative]
+    Enetcons: Dict[Tuple[Commodity,Year,Time],OutputNonNegative]
 
 @dataclass
 class StorageOutput:
-    E_storage_level: Dict[Tuple[ConversionSubprocess,Year,Time],NonNegative]
-    E_storage_level_max: Dict[Tuple[ConversionSubprocess,Year],NonNegative]
+    E_storage_level: Dict[Tuple[ConversionSubprocess,Year,Time],OutputNonNegative]
+    E_storage_level_max: Dict[Tuple[ConversionSubprocess,Year],OutputNonNegative]
 
 
 @dataclass
