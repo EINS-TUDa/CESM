@@ -10,6 +10,8 @@ from pathlib import Path
 from Core.model import Model
 import Core.visualize as visual
 
+from Core.utils import save_input_output, read_input_output
+
 model_name = "TestModel" # model name
 model_name = "DEModel_V2" # model name
 
@@ -33,16 +35,16 @@ output = model.get_output()
 # ##### Uncomment to save the input and the output ######
 print("#### saving model started ###")
 save_dict = {"input":input, "output":output}
-visual.save_input_output(save_dict,filename="input_output.pkl")
+save_input_output(save_dict,filename="input_output.pkl")
 print("#### saving model finished ###")
 
 # ##### Uncomment to load input and output from an already saved model ######
-input, output = visual.read_input_output(filename="input_output.pkl")
+#input, output = read_input_output(filename="input_output.pkl")
 
 # ##### Uncomment to visualize a chosen variable ######
 # Choose a conversion_subprocess and a commodity
-cs = list(input.dataset.conversion_subprocesses)[0]
-co = list(input.dataset.commodities)[0]
+#cs = list(input.dataset.conversion_subprocesses)[0]
+#co = list(input.dataset.commodities)[0]
 # draw the bar plot
-visual.visualize_data("Pin", input, output, cs, co)
+#visual.visualize_data("Pin", input, output, cs, co)
 
