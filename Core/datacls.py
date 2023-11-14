@@ -6,6 +6,8 @@ from pydantic.dataclasses import dataclass
 from gurobipy import GRB
 from abc import ABC
 
+from pandas import DataFrame
+
 OutputNonNegative = Annotated[float, Field(ge=-1e-5)]
 NonNegative = Annotated[float, Field(ge=0)]
 Positive = Annotated[float, Field(gt=0)]
@@ -30,7 +32,7 @@ def scale_dict(d: Dict[Any, float], scale: float) -> Dict[Any, float]:
 
 @dataclass(frozen=True)
 class IntData(ABC):
-    _value: int 
+    _value: int
     def __int__(self):
         return self._value
     def __hash__(self) -> int:
@@ -94,6 +96,7 @@ class Dataset:
     def __post_init__(self) -> None:
         self._validate_conversion_subprocesses()
     
+    # -- Validator --
     def _validate_conversion_subprocesses(self) -> None:
         for cs in self.conversion_subprocesses:
             if cs.cp not in self.conversion_processes:
@@ -121,6 +124,7 @@ class Dataset:
                 raise ValueError(f"Commodity {cs.cin} is not defined")
             if cs.cout not in self.commodities:
                 raise ValueError(f"Commodity {cs.cout} is not defined")
+        
 
 @dataclass
 class GlobalParam:
@@ -342,8 +346,9 @@ class EnergyOutput:
     Eouttime: Dict[Tuple[ConversionSubprocess,Year,Time],OutputNonNegative]
     Eintime: Dict[Tuple[ConversionSubprocess,Year,Time],OutputNonNegative]
     Enetgen: Dict[Tuple[Commodity,Year,Time],OutputNonNegative]
-    Enetcons: Dict[Tuple[Commodity,Year,Time],OutputNonNegative]
+    Enetcons: Dict[Tuple[Commodity,Year,Time],OutputNonNegative]    
 
+    
 @dataclass
 class StorageOutput:
     E_storage_level: Dict[Tuple[ConversionSubprocess,Year,Time],OutputNonNegative]
@@ -357,3 +362,76 @@ class Output:
     power: PowerOutput
     energy: EnergyOutput
     storage: StorageOutput
+
+
+
+# -- Helpers --
+
+def _initialize_headers(key, current_headers):
+    if isinstance(key, ConversionSubprocess):
+        current_headers.extend(["cp", "cin", "cout"])
+    elif isinstance(key, Commodity):
+        current_headers.append("Commodity")
+    elif isinstance(key, Year):
+        current_headers.append("Year")
+    elif isinstance(key, Time):
+        current_headers.append("Time")
+    else:
+        raise Exception("Unknown key type")
+
+    return current_headers
+
+def _get_key_values(key, current_values):
+    if isinstance(key, ConversionSubprocess):
+        current_values.extend([str(key.cp), str(key.cin), str(key.cout)])
+    elif isinstance(key, Commodity):
+        current_values.append(str(key))
+    elif isinstance(key, Year):
+        current_values.append(int(key))
+    elif isinstance(key, Time):
+        current_values.append(int(key))
+    else:
+        raise Exception("Unknown key type")
+
+    return current_values
+
+def get_as_dataframe(obj, **filter) -> DataFrame:
+    
+        headers = []
+        ret = []
+
+        # Get keys and values
+        keys = list(obj.keys())
+        
+        # Initialize headers
+        if isinstance(keys[0], tuple):
+            for kp in keys[0]:
+                headers = _initialize_headers(kp, headers)
+        else:
+            headers = _initialize_headers(keys[0], headers)
+                
+        headers.append('value')
+
+        # Initialize rows
+        for key, val in obj.items():
+            row = []
+            if isinstance(key, tuple):
+                for kp in key:
+                    row = _get_key_values(kp, row)
+            else:
+                row = _get_key_values(key, row)
+            row.append(val)
+            ret.append(tuple(row))
+        
+
+        df = DataFrame(ret, columns=headers)
+
+        # Filter
+        for k, v in filter.items():
+            try:
+                df = df[df[k] == v]
+            except KeyError:
+                raise Exception(f"Key {k} not found in DataFrame! Existing keys: {df.columns}")
+
+        # Make DataFrame
+        return df
