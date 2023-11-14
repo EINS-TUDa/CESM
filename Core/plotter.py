@@ -302,7 +302,6 @@ class Plotter:
    def link_opacity(self):
       return self.plot_setings["sankey_link_opacity"]
 
-     
 
 # -- Fast Tests - Examples--
 if __name__ == "__main__":

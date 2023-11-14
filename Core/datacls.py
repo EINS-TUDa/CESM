@@ -395,10 +395,9 @@ def _get_key_values(key, current_values):
 
     return current_values
 
-def get_as_dataframe(obj, **filter) -> DataFrame:
+def get_as_dataframe(obj, **filterby) -> DataFrame:
     
-        headers = []
-        ret = []
+        headers, ret = [], []
 
         # Get keys and values
         keys = list(obj.keys())
@@ -409,7 +408,7 @@ def get_as_dataframe(obj, **filter) -> DataFrame:
                 headers = _initialize_headers(kp, headers)
         else:
             headers = _initialize_headers(keys[0], headers)
-                
+                        
         headers.append('value')
 
         # Initialize rows
@@ -423,15 +422,12 @@ def get_as_dataframe(obj, **filter) -> DataFrame:
             row.append(val)
             ret.append(tuple(row))
         
-
+        # Build and Filter
         df = DataFrame(ret, columns=headers)
-
-        # Filter
-        for k, v in filter.items():
+        for k, v in filterby.items():
             try:
                 df = df[df[k] == v]
             except KeyError:
                 raise Exception(f"Key {k} not found in DataFrame! Existing keys: {df.columns}")
 
-        # Make DataFrame
         return df
