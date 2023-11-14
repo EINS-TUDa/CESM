@@ -4,6 +4,7 @@ from pydantic import Field
 from dataclasses import field
 from pydantic.dataclasses import dataclass
 from gurobipy import GRB
+from abc import ABC
 
 OutputNonNegative = Annotated[float, Field(ge=-1e-5)]
 NonNegative = Annotated[float, Field(ge=0)]
@@ -26,28 +27,19 @@ def scale_dict(d: Dict[Any, float], scale: float) -> Dict[Any, float]:
     for k,v in d.items():
         d[k] = v*scale
 
+
 @dataclass(frozen=True)
-class Time:
-    _value: int
+class IntData(ABC):
+    _value: int 
     def __int__(self):
         return self._value
     def __hash__(self) -> int:
         return hash(self._value)
     def __repr__(self) -> str:
         return str(self._value)
-
+    
 @dataclass(frozen=True)
-class Year:
-    _value: int
-    def __int__(self):
-        return self._value
-    def __hash__(self) -> int:
-        return hash(self._value)
-    def __repr__(self) -> str:
-        return str(self._value)
-
-@dataclass(frozen=True)
-class ConversionProcess:
+class StrData(ABC):
     _value: str
     def __str__(self):
         return self._value
@@ -57,14 +49,19 @@ class ConversionProcess:
         return str(self._value)
 
 @dataclass(frozen=True)
-class Commodity:
-    _value: str
-    def __str__(self):
-        return self._value
-    def __hash__(self) -> int:
-        return hash(self._value)
-    def __repr__(self) -> str:
-        return str(self._value)
+class Time(IntData):
+    pass
+
+@dataclass(frozen=True)
+class Year(IntData):
+    pass
+
+@dataclass(frozen=True)
+class ConversionProcess(StrData):
+    pass
+@dataclass(frozen=True)
+class Commodity(StrData):
+    pass
 
 @dataclass(frozen=True)
 class ConversionSubprocess:
