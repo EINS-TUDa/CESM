@@ -402,7 +402,7 @@ def read_input_output(filename:str):
 
 # -- Helpers --
 
-def _initialize_headers(key: Union(Time, Year, ConversionSubprocess,Commodity), current_headers: List[str]) -> List[str]:
+def _initialize_headers(key: Union[Time, Year, ConversionSubprocess,Commodity], current_headers: List[str]) -> List[str]:
     """gets the key of the dictionary and adds the corresponding headers to the current headers
 
     :param key: The key of the dictionary that is being converted to a DataFrame
@@ -426,7 +426,7 @@ def _initialize_headers(key: Union(Time, Year, ConversionSubprocess,Commodity), 
 
     return current_headers
 
-def _get_key_values(key: Union(Time, Year, ConversionSubprocess,Commodity), current_values: List[int|str]) -> List[int|str]:
+def _get_key_values(key: Union[Time, Year, ConversionSubprocess,Commodity], current_values: List[int|str]) -> List[int|str]:
     """gets the key or elements of the tuple key of the dictionary and adds the corresponding values to the current values
 
     :param key: The key of the dictionary that is being converted to a DataFrame

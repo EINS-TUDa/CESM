@@ -7,8 +7,7 @@
 import plotly.graph_objects as go
 import plotly.colors as plc
 
-from Core.utils import read_input_output
-from Core.datacls import Input, Output, get_as_dataframe
+from Core.datacls import Input, Output, get_as_dataframe, read_input_output
 
 import pandas as pd
 import random
