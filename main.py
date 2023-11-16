@@ -8,10 +8,9 @@ Date: 18.10.2023
 from Core.inputparse import Parser
 from pathlib import Path
 from Core.model import Model
-import Core.visualize as visual
 from Core.plotter import Plotter, BarPlotType, TimeSeriesType
+from Core.datacls import save_input_output, read_input_output
 
-from Core.utils import save_input_output, read_input_output
 
 model_name = "TestModel" # model name
 model_name = "DEModel_V2" # model name
@@ -34,8 +33,7 @@ output = model.get_output()
 
 ##### Uncomment to save the input and the output ######
 print("#### saving model started ###")
-save_dict = {"input":input, "output":output}
-save_input_output(save_dict,filename="input_output.pkl")
+save_input_output(input=input, output=output,filename="input_output.pkl")
 print("#### saving model finished ###")
 
 ##### Uncomment to load input and output from an already saved model ######

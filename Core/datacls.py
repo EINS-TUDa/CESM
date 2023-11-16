@@ -3,8 +3,8 @@ from collections import defaultdict
 from pydantic import Field
 from dataclasses import field
 from pydantic.dataclasses import dataclass
-from gurobipy import GRB
 from abc import ABC
+import pickle
 
 from pandas import DataFrame
 
@@ -362,6 +362,41 @@ class Output:
     power: PowerOutput
     energy: EnergyOutput
     storage: StorageOutput
+
+
+# -- Input and Output Saver and Reader --
+
+def save_input_output(input: Input, output:Output, filename: str):
+    """Save the input and output of the model in a .pkl file.
+
+    :param input: the input of the model
+    :type input: Input
+    :param output: the output of the model
+    :type output: Output
+    :param filename: the path of the file
+    :type filename: str
+    """
+    saved_dict = {"input": input, "output": output}
+    with open(filename, "wb") as f:
+        pickle.dump(saved_dict,f)
+
+def read_input_output(filename:str):
+    """
+    Read the output of the model from a .pkl file.
+
+    Args:
+        filename: filename of saved output
+
+    Return: 
+        output: output from the Model as in the Output dataclass
+    """
+    with open(filename, "rb") as f:
+        saved_dict = pickle.load(f)
+        
+    inp = saved_dict["input"]
+    output = saved_dict["output"]
+    return inp, output
+
 
 
 
