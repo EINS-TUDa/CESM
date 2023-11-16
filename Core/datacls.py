@@ -1,4 +1,4 @@
-from typing import Dict,List,Tuple, Annotated, Any
+from typing import Dict,List,Tuple, Annotated, Any, Union
 from collections import defaultdict
 from pydantic import Field
 from dataclasses import field
@@ -367,7 +367,17 @@ class Output:
 
 # -- Helpers --
 
-def _initialize_headers(key, current_headers):
+def _initialize_headers(key: Union(Time, Year, ConversionSubprocess,Commodity), current_headers: List[str]) -> List[str]:
+    """gets the key of the dictionary and adds the corresponding headers to the current headers
+
+    :param key: The key of the dictionary that is being converted to a DataFrame
+    :type key: Time, Year, ConversionSubprocess, Commodity
+    :param current_headers: list of current headers
+    :type current_headers: List[str]
+    :raises Exception: if the key type is not known
+    :return: list of updated headers
+    :rtype: List[str]
+    """
     if isinstance(key, ConversionSubprocess):
         current_headers.extend(["cp", "cin", "cout"])
     elif isinstance(key, Commodity):
@@ -381,7 +391,17 @@ def _initialize_headers(key, current_headers):
 
     return current_headers
 
-def _get_key_values(key, current_values):
+def _get_key_values(key: Union(Time, Year, ConversionSubprocess,Commodity), current_values: List[int|str]) -> List[int|str]:
+    """gets the key or elements of the tuple key of the dictionary and adds the corresponding values to the current values
+
+    :param key: The key of the dictionary that is being converted to a DataFrame
+    :type key: Time, Year, ConversionSubprocess, Commodity
+    :param current_values: list of current values
+    :type current_values: List[int | str]
+    :raises Exception: if the key type is not known
+    :return: list of updated values
+    :rtype: List[int|str]
+    """
     if isinstance(key, ConversionSubprocess):
         current_values.extend([str(key.cp), str(key.cin), str(key.cout)])
     elif isinstance(key, Commodity):
@@ -395,39 +415,46 @@ def _get_key_values(key, current_values):
 
     return current_values
 
-def get_as_dataframe(obj, **filterby) -> DataFrame:
+def get_as_dataframe(obj: Dict[Any,float], **filterby) -> DataFrame:
+    """gets a dictionary of the input or output data classes and converts it to a pandas DataFrame
+
+    :param obj: a dictionary of the input or output data classes
+    :type obj: Dict[Any,float]
+    :raises Exception: if the key type is not known
+    :return: a pandas DataFrame
+    :rtype: DataFrame
+    """
+    headers, ret = [], []
+
+    # Get keys and values
+    keys = list(obj.keys())
     
-        headers, ret = [], []
+    # Initialize headers
+    if isinstance(keys[0], tuple):
+        for kp in keys[0]:
+            headers = _initialize_headers(kp, headers)
+    else:
+        headers = _initialize_headers(keys[0], headers)
+                    
+    headers.append('value')
 
-        # Get keys and values
-        keys = list(obj.keys())
-        
-        # Initialize headers
-        if isinstance(keys[0], tuple):
-            for kp in keys[0]:
-                headers = _initialize_headers(kp, headers)
+    # Initialize rows
+    for key, val in obj.items():
+        row = []
+        if isinstance(key, tuple):
+            for kp in key:
+                row = _get_key_values(kp, row)
         else:
-            headers = _initialize_headers(keys[0], headers)
-                        
-        headers.append('value')
+            row = _get_key_values(key, row)
+        row.append(val)
+        ret.append(tuple(row))
+    
+    # Build and Filter
+    df = DataFrame(ret, columns=headers)
+    for k, v in filterby.items():
+        try:
+            df = df[df[k] == v]
+        except KeyError:
+            raise Exception(f"Key {k} not found in DataFrame! Existing keys: {df.columns}")
 
-        # Initialize rows
-        for key, val in obj.items():
-            row = []
-            if isinstance(key, tuple):
-                for kp in key:
-                    row = _get_key_values(kp, row)
-            else:
-                row = _get_key_values(key, row)
-            row.append(val)
-            ret.append(tuple(row))
-        
-        # Build and Filter
-        df = DataFrame(ret, columns=headers)
-        for k, v in filterby.items():
-            try:
-                df = df[df[k] == v]
-            except KeyError:
-                raise Exception(f"Key {k} not found in DataFrame! Existing keys: {df.columns}")
-
-        return df
+    return df
