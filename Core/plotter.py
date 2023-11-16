@@ -112,7 +112,7 @@ class Plotter:
             ))])
 
       fig.update_layout(title_text="%s Sankey"%year, font_size=12)
-      fig.show()
+      # fig.show()
       return fig
 
    def plot_bars(self, bar_type: BarPlotType, commodity=None):
