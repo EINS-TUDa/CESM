@@ -9,6 +9,7 @@ from Core.inputparse import Parser
 from pathlib import Path
 from Core.model import Model
 import Core.visualize as visual
+from Core.plotter import Plotter, BarPlotType, TimeSeriesType
 
 from Core.utils import save_input_output, read_input_output
 
@@ -17,7 +18,6 @@ model_name = "DEModel_V2" # model name
 
 techmap_dir_path = Path(".").joinpath("Data", "Techmap") # techmap directory path
 ts_dir_path = Path(".").joinpath("Data", "TimeSeries") # time series directory path
-# parser = Parser("DEModel",techmap_dir_path=techmap_dir_path, ts_dir_path=ts_dir_path ,scenario = "Base4twk")
 parser = Parser(model_name,techmap_dir_path=techmap_dir_path, ts_dir_path=ts_dir_path ,scenario = "Base")
 print("### parsing started ###")
 parser.parse()
@@ -32,19 +32,18 @@ print("#### solving model finished ###")
 
 output = model.get_output()
 
-# ##### Uncomment to save the input and the output ######
+##### Uncomment to save the input and the output ######
 print("#### saving model started ###")
 save_dict = {"input":input, "output":output}
 save_input_output(save_dict,filename="input_output.pkl")
 print("#### saving model finished ###")
 
-# ##### Uncomment to load input and output from an already saved model ######
-#input, output = read_input_output(filename="input_output.pkl")
+##### Uncomment to load input and output from an already saved model ######
+input, output = read_input_output(filename="input_output.pkl")
 
-# ##### Uncomment to visualize a chosen variable ######
-# Choose a conversion_subprocess and a commodity
-#cs = list(input.dataset.conversion_subprocesses)[0]
-#co = list(input.dataset.commodities)[0]
-# draw the bar plot
-#visual.visualize_data("Pin", input, output, cs, co)
-
+##### Uncomment to visualize a chosen variable ######
+ipt, opt = read_input_output("input_output.pkl")
+plotter = Plotter(ipt, opt)
+plotter.plot_sankey(2050)
+plotter.plot_bars(BarPlotType.PRIMARY_ENERGY, commodity="Electricity")
+plotter.plot_timeseries(TimeSeriesType.POWER_CONSUMPTION, year=2020, commodity="Electricity")
