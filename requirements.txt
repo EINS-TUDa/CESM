@@ -4,5 +4,4 @@ scipy
 pandas
 gurobipy
 pydantic
-matplotlib
 plotly
