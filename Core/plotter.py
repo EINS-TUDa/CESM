@@ -16,7 +16,7 @@ from enum import Enum
 from typing import List
 
 class PlotterExeption(Exception):
-    pass
+   pass
 
 class BarPlotType(Enum):
    ENERGY_CONSUMPTION = 1
@@ -217,7 +217,6 @@ class Plotter:
       fig = go.Figure(data=trace, layout=layout)
       fig.show()
 
-      pass
 
    def _get_traces(self, df, type, x="Year", y="value", stacks="cp") -> List[go.Bar]:
       """Returns a list of traces for plotting
@@ -310,6 +309,5 @@ if __name__ == "__main__":
    plotter.plot_sankey(2050)
    plotter.plot_bars(BarPlotType.PRIMARY_ENERGY, commodity="Electricity")
    plotter.plot_timeseries(TimeSeriesType.POWER_CONSUMPTION, year=2020, commodity="Electricity")
-   
-   pass
+
 
