@@ -17,8 +17,8 @@ Parameters
 
 Global
 ~~~~~~
-- :math:`dt`: time step size. Dimension: Time. Range: Positive.
-- :math:`w`: weight of each time step withim the whole year. Range: Positive. default = 1.
+- :math:`dt`: time step size. It shows how many hours each time step represents. Dimension: Time. Range: Positive.
+- :math:`w`: weight of each time step withim the whole year. It's equal to :math:`8760/|T|`. Range: Positive. default = 1.
 - :math:`discount\_rate`: The discount rate is the interest rate used to calculate the present value of future cash flows from a project or investment. Dimension: -. Range: Non-negative.
 
 
