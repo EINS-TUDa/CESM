@@ -146,3 +146,6 @@ dmypy.json
 
 # pickle
 *.pkl
+
+# Office Temp Files
+~$*
