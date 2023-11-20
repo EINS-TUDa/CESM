@@ -53,9 +53,9 @@ Technology
 
 Availability
 ~~~~~~~~~~~~
-- :math:`availability\_factor(CS,T)`: Availability factor of the subprocess :math:`cs` at time step :math:`t`. Range = [0,1]. default = 1. Dimension:-.
+- :math:`availability\_profile(CS,T)`: Availability profile of the subprocess :math:`cs` at time step :math:`t`. Range = [0,1]. default = 1. Dimension:-.
 - :math:`technical\_availability(CS)`: Technical Availability factor of the conversion subprocess :math:`cs`. Range = [0,1]. default = 1. 
-- :math:`output\_factor(CS,T)`: Share of the annual energy output supplied  of the conversion subprocess :math:`cs` at time step :math:`t` such that  :math:`\sum_{t \in T}output\_factor[cs,t]=1 \quad \forall cs \in CS`. Dimension: -. Range: Non-negative.
+- :math:`output\_profile(CS,T)`: Share of the annual energy output supplied  of the conversion subprocess :math:`cs` at time step :math:`t` such that  :math:`\sum_{t \in T}output\_profile[cs,t]=1 \quad \forall cs \in CS`. Dimension: -. Range: Non-negative.
 
 Fractions of generation and consumption
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -163,10 +163,10 @@ Power output
 
 :eq:`max_power_out_eq` The output is limited by the capacity of the conversion subprocess.
 
-.. math:: Pout[cs,y,t] \leq Cap\_active[cs,y] * availability\_factor[cs,t] \quad  \forall y\in Y,\forall t\in T, \forall cs\in CS \setminus SCS
+.. math:: Pout[cs,y,t] \leq Cap\_active[cs,y] * availability\_profile[cs,t] \quad  \forall y\in Y,\forall t\in T, \forall cs\in CS \setminus SCS
     :label: re_availability_eq
 
-:eq:`re_availability_eq` The Generation of renewable energy is limited by the availability factor.
+:eq:`re_availability_eq` The Generation of renewable energy is limited by the availability profile.
 
 Power-Energy
 ~~~~~~~~~~~~~~~~~~~~~~~~
@@ -241,7 +241,7 @@ Generation
 .. math:: Eouttot[cs,y] \geq min\_eout[cs,y] \quad \forall y\in Y, \forall cs\in CS
     :label: min_energyout_eq
 
-.. math:: Eouttime[cs,t,y] = output\_factor[cs,t] * Eouttot[cs,y] \quad  \forall y\in Y, \forall t\in T,\forall cs\in CS
+.. math:: Eouttime[cs,t,y] = output\_profile[cs,t] * Eouttot[cs,y] \quad  \forall y\in Y, \forall t\in T,\forall cs\in CS
     :label: loadshape_eq
 
 

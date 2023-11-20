@@ -65,7 +65,7 @@ class Model():
         constrs["capex"] = model.addConstr(
                 vars["CAPEX"] == sum(
                     param.co2.co2_price[y] * vars["Total_annual_co2_emission"][y] +
-                    param.availability.discount_profile[y] * sum(vars["Cap_new"][cs,y] * param.cost.capex_cost_power[cs,y] for cs in dataset.conversion_subprocesses) 
+                    param.globalparam.discount_factor[y] * sum(vars["Cap_new"][cs,y] * param.cost.capex_cost_power[cs,y] for cs in dataset.conversion_subprocesses) 
                     for y in dataset.years
                 ),
                 name = "capex"
