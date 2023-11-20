@@ -168,7 +168,7 @@ Power output
 
 :eq:`re_availability_eq` The Generation of renewable energy is limited by the availability factor.
 
-Power Energy
+Power-Energy
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. math:: Eouttime[cs,y,t] = Pout[cs,y,t]*dt*w \quad  \forall y\in Y,\forall t\in T, \forall cs\in CS
