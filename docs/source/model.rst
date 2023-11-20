@@ -143,7 +143,7 @@ CO2
 .. math:: Total\_annual\_co2\_emission[y] = \sum_{cs \in CS} spec\_co2[cs] * Eouttot[cs,y] \quad \forall y \in Y
     :label: annual_co2_emission_eq
 
-:eq:`annual_co2_emission_eq` total annual CO2 emission is equal to the sum of energy produced by each conversion process multiplied by its specific CO2 emission. 
+:eq:`annual_co2_emission_eq` total annual CO2 emission is equal to the sum of energy produced by each conversion subprocess multiplied by its specific CO2 emission. 
 
 .. math:: Total\_annual\_co2\_emission[y] \leq annual\_co2\_limit[y] \quad \forall y \in Y 
     :label: annual_co2_emission_limit_eq
@@ -156,12 +156,12 @@ Power output
 .. math:: Pout[cs,y,t] = Pin[cs,y,t] * efficiency[cs] \quad \forall y\in Y, \forall t\in T, \forall cs\in CS 
     :label: efficiency_eq
 
-:eq:`efficiency_eq` the ratio of output to input is equal to efficiency for each converssion process.
+:eq:`efficiency_eq` the ratio of output to input is equal to efficiency for each converssion subprocess.
 
 .. math:: Pout[cs,y,t] \leq Cap\_active[cs,y] \quad \forall y\in Y, \forall t\in T, \forall cs\in CS
     :label: max_power_out_eq
 
-:eq:`max_power_out_eq` The output is limited by the capacity of the conversion process.
+:eq:`max_power_out_eq` The output is limited by the capacity of the conversion subprocess.
 
 .. math:: Pout[cs,y,t] \leq Cap\_active[cs,y] * availability\_factor[cs,t] \quad  \forall y\in Y,\forall t\in T, \forall cs\in CS \setminus SCS
     :label: re_availability_eq
@@ -174,12 +174,11 @@ Power Energy
 .. math:: Eouttime[cs,y,t] = Pout[cs,y,t]*dt*w \quad  \forall y\in Y,\forall t\in T, \forall cs\in CS
     :label: eouttime_eq
 
-:eq:`eouttime_eq` The energy output of converssion process :math:`cs` at time step :math:`t` in year :math:`y`.
+:eq:`eouttime_eq` The energy output of converssion subprocess :math:`cs` at time step :math:`t` in year :math:`y`.
 
 .. math:: Eintime[cs,y,t] = Pin[cs,y,t]*dt*w \quad  \forall y\in Y,\forall t\in T, \forall cs\in CS
     :label: eintime_eq
 
-:eq:`eintime_eq`
 
 Fractions
 ~~~~~~~~~~~~~~~~~~~
@@ -204,12 +203,10 @@ Capacity
 .. math:: Cap\_res[cs, y] \leq cap\_res\_max[cs, y] \quad \forall y\in Y, \forall cs\in CS
     :label: max_cap_res_eq
 
-:eq:`max_cap_res_eq`
 
 .. math:: Cap\_res[cs, y] \geq cap\_res\_min[cs, y] \quad \forall y\in Y, \forall cs\in CS
     :label: min_cap_res_eq
 
-:eq:`min_cap_res_eq`
 
 .. math:: Cap\_active[cs, y] = Cap\_res[cs, y] + \sum_{yy\in Y|y-technical_lifetime[cs]\leq yy \leq y} Cap\_new[cs, yy] \quad \forall y\in Y, \forall cs\in CS
     :label: cap_active_eq
