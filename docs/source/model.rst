@@ -12,7 +12,7 @@ Sets
 
 Parameters
 ----------
-- all parameters are Non-negative except it's specified otherwise.
+- All parameters are non-negative unless specified otherwise, and names start with a lowercase letter.
 - Energy/Time is Power.
 
 Global
@@ -76,7 +76,7 @@ Storage
 
 Variables
 ---------
-All variables are Non-negative.
+All variables are non-negative and names start with a capital letter.
 
 Costs
 ~~~~~
