@@ -228,17 +228,17 @@ class TechnologyParam:
 class AvailabilityParam:
     availability_factor: Dict[Tuple[ConversionSubprocess,Time],Unit_in0_in1] = field(default_factory=dict)
     technical_availability: Dict[ConversionSubprocess,Unit_in0_in1] = field(default_factory=dict)
-    demand_factor: Dict[Tuple[ConversionSubprocess,Time], NonNegative] = field(default_factory=dict)
+    output_factor: Dict[Tuple[ConversionSubprocess,Time], NonNegative] = field(default_factory=dict)
     discount_factor: Dict[Year,float] = field(init=False) # value is set in Input class
     def __post_init__(self) -> None:
         self.technical_availability = defaultdict(one, self.technical_availability)
-        self._validate_demand_factor()
+        self._validate_output_factor()
     def __repr__(self) -> str:
-        return str(self.availability_factor) + str(self.technical_availability) + str(self.demand_factor)
+        return str(self.availability_factor) + str(self.technical_availability) + str(self.output_factor)
     
-    def _validate_demand_factor(self):
-        for cs in {cs for (cs,t) in self.demand_factor.keys()}:
-            values = [value for key,value in self.demand_factor.items() if key[0]==cs]
+    def _validate_output_factor(self):
+        for cs in {cs for (cs,t) in self.output_factor.keys()}:
+            values = [value for key,value in self.output_factor.items() if key[0]==cs]
             if  len(values) > 0 and abs(sum(values) - 1.0) > 1e-4:
                 raise ValueError("Demand factors must sum to 1.0")
         
@@ -246,8 +246,8 @@ class AvailabilityParam:
         dataset.validate_cs([cs for (cs,t) in self.availability_factor.keys()])
         dataset.validate_t([t for (cs,t) in self.availability_factor.keys()])
         dataset.validate_cs(self.technical_availability.keys())
-        dataset.validate_cs([cs for (cs,t) in self.demand_factor.keys()])
-        dataset.validate_t([t for (cs,t) in self.demand_factor.keys()])
+        dataset.validate_cs([cs for (cs,t) in self.output_factor.keys()])
+        dataset.validate_t([t for (cs,t) in self.output_factor.keys()])
         dataset.validate_y(self.discount_factor.keys())
 
 @dataclass

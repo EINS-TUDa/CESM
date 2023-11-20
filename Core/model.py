@@ -267,9 +267,9 @@ class Model():
         )
         constrs["load_shape"] = model.addConstrs(
             (
-                vars["Eouttime"][cs,y,t] == param.availability.demand_factor[cs,t] * vars["Eouttot"][cs,y]     
+                vars["Eouttime"][cs,y,t] == param.availability.output_factor[cs,t] * vars["Eouttot"][cs,y]     
                 for y in dataset.years
-                for (cs,t) in param.availability.demand_factor
+                for (cs,t) in param.availability.output_factor
             ),
             name = "load_shape"
         )
