@@ -134,9 +134,9 @@ class GlobalParam:
 
 @dataclass      
 class CostParam:
-    opex_cost_energy: Dict[Tuple[ConversionSubprocess,Year], NonNegative] = field(default_factory=dict)
-    opex_cost_power: Dict[Tuple[ConversionSubprocess,Year], NonNegative] = field(default_factory=dict)
-    capex_cost_power: Dict[Tuple[ConversionSubprocess,Year], NonNegative] = field(default_factory=dict)
+    opex_cost_energy: Dict[Tuple[ConversionSubprocess,Year], NonNegative]
+    opex_cost_power: Dict[Tuple[ConversionSubprocess,Year], NonNegative]
+    capex_cost_power: Dict[Tuple[ConversionSubprocess,Year], NonNegative]
     def __post_init__(self) -> None:
         self.opex_cost_energy = defaultdict(helper_zero, self.opex_cost_energy)
         self.opex_cost_power = defaultdict(helper_zero, self.opex_cost_power)
@@ -157,9 +157,9 @@ class CostParam:
 
 @dataclass
 class CO2Param:
-    spec_co2: Dict[ConversionSubprocess, NonNegative] = field(default_factory=dict)
-    annual_co2_limit: Dict[Year, NonNegative] = field(default_factory=dict)
-    co2_price: Dict[Year, NonNegative] = field(default_factory=dict)
+    spec_co2: Dict[ConversionSubprocess, NonNegative]
+    annual_co2_limit: Dict[Year, NonNegative]
+    co2_price: Dict[Year, NonNegative]
     def __post_init__(self) -> None:
         self.spec_co2 = defaultdict(helper_zero, self.spec_co2)
         self.co2_price = defaultdict(helper_zero, self.co2_price)
@@ -174,8 +174,8 @@ class CO2Param:
 
 @dataclass
 class EnergyParam:
-    max_eout : Dict[Tuple[ConversionSubprocess,Year],NonNegative] = field(default_factory=dict)
-    min_eout : Dict[Tuple[ConversionSubprocess,Year],NonNegative] = field(default_factory=dict)
+    max_eout : Dict[Tuple[ConversionSubprocess,Year],NonNegative]
+    min_eout : Dict[Tuple[ConversionSubprocess,Year],NonNegative]
     
     def validate(self, dataset:Dataset) -> None:
         dataset.validate_cs([cs for (cs,y) in self.max_eout.keys()])
@@ -189,10 +189,10 @@ class EnergyParam:
 
 @dataclass
 class CapacityParam:
-    cap_min: Dict[Tuple[ConversionSubprocess,Year],NonNegative] = field(default_factory=dict)
-    cap_max: Dict[Tuple[ConversionSubprocess,Year],NonNegative] = field(default_factory=dict)
-    cap_res_max: Dict[Tuple[ConversionSubprocess,Year],NonNegative] = field(default_factory=dict)
-    cap_res_min: Dict[Tuple[ConversionSubprocess,Year],NonNegative] = field(default_factory=dict)
+    cap_min: Dict[Tuple[ConversionSubprocess,Year],NonNegative]
+    cap_max: Dict[Tuple[ConversionSubprocess,Year],NonNegative]
+    cap_res_max: Dict[Tuple[ConversionSubprocess,Year],NonNegative]
+    cap_res_min: Dict[Tuple[ConversionSubprocess,Year],NonNegative]
     def __post_init__(self) -> None:
         self.cap_res_max = defaultdict(helper_zero, self.cap_res_max)
     
@@ -214,8 +214,8 @@ class CapacityParam:
 
 @dataclass                                    
 class TechnologyParam:
-    efficiency: Dict[ConversionSubprocess, NonNegative] = field(default_factory=dict)
-    technical_lifetime: Dict[ConversionSubprocess, Positive] = field(default_factory=dict)
+    efficiency: Dict[ConversionSubprocess, NonNegative]
+    technical_lifetime: Dict[ConversionSubprocess, Positive]
     def __post_init__(self) -> None:
         self.efficiency = defaultdict(one, self.efficiency)
         self.technical_lifetime = defaultdict(hundred, {key:round(value) for key,value in self.technical_lifetime.items()})
@@ -226,9 +226,9 @@ class TechnologyParam:
 
 @dataclass
 class AvailabilityParam:
-    availability_factor: Dict[Tuple[ConversionSubprocess,Time],Unit_in0_in1] = field(default_factory=dict)
-    technical_availability: Dict[ConversionSubprocess,Unit_in0_in1] = field(default_factory=dict)
-    output_factor: Dict[Tuple[ConversionSubprocess,Time], NonNegative] = field(default_factory=dict)
+    availability_factor: Dict[Tuple[ConversionSubprocess,Time],Unit_in0_in1]
+    technical_availability: Dict[ConversionSubprocess,Unit_in0_in1]
+    output_factor: Dict[Tuple[ConversionSubprocess,Time], NonNegative]
     discount_factor: Dict[Year,float] = field(init=False) # value is set in Input class
     def __post_init__(self) -> None:
         self.technical_availability = defaultdict(one, self.technical_availability)
@@ -252,10 +252,10 @@ class AvailabilityParam:
 
 @dataclass
 class FractionParam:
-    out_frac_min : Dict[Tuple[ConversionSubprocess,Year],Unit_in0_in1] = field(default_factory=dict)
-    out_frac_max : Dict[Tuple[ConversionSubprocess,Year],Unit_in0_in1] = field(default_factory=dict)
-    in_frac_min : Dict[Tuple[ConversionSubprocess,Year],Unit_in0_in1] = field(default_factory=dict)
-    in_frac_max : Dict[Tuple[ConversionSubprocess,Year],Unit_in0_in1] = field(default_factory=dict)
+    out_frac_min : Dict[Tuple[ConversionSubprocess,Year],Unit_in0_in1]
+    out_frac_max : Dict[Tuple[ConversionSubprocess,Year],Unit_in0_in1]
+    in_frac_min : Dict[Tuple[ConversionSubprocess,Year],Unit_in0_in1]
+    in_frac_max : Dict[Tuple[ConversionSubprocess,Year],Unit_in0_in1]
 
     def validate(self, dataset:Dataset) -> None:
         dataset.validate_cs([cs for (cs,y) in self.out_frac_min.keys()])
@@ -269,8 +269,8 @@ class FractionParam:
 
 @dataclass
 class StorageParam:
-    c_rate: Dict[ConversionSubprocess, Positive] = field(default_factory=dict)
-    efficiency_charge: Dict[ConversionSubprocess, Unit_ex0_in1] = field(default_factory=dict)
+    c_rate: Dict[ConversionSubprocess, Positive]
+    efficiency_charge: Dict[ConversionSubprocess, Unit_ex0_in1]
     def __post_init__(self) -> None:
         self.efficiency_charge = defaultdict(one, self.efficiency_charge)
 
