@@ -208,7 +208,7 @@ Capacity
     :label: min_cap_res_eq
 
 
-.. math:: Cap\_active[cs, y] = Cap\_res[cs, y] + \sum_{yy\in Y|y-technical_lifetime[cs]\leq yy \leq y} Cap\_new[cs, yy] \quad \forall y\in Y, \forall cs\in CS
+.. math:: Cap\_active[cs, y] = Cap\_res[cs, y] + \sum_{yy\in Y|y-technical\_lifetime[cs]\leq yy \leq y} Cap\_new[cs, yy] \quad \forall y\in Y, \forall cs\in CS
     :label: cap_active_eq
 
 .. math:: Cap\_active[cs,y] \leq cap\_max[cs,y] \quad \forall y\in Y, \forall cs\in CS
