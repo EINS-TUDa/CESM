@@ -65,7 +65,7 @@ class Model():
         constrs["capex"] = model.addConstr(
                 vars["CAPEX"] == sum(
                     param.co2.co2_price[y] * vars["Total_annual_co2_emission"][y] +
-                    param.availability.discount_factor[y] * sum(vars["Cap_new"][cs,y] * param.cost.capex_cost_power[cs,y] for cs in dataset.conversion_subprocesses) 
+                    param.availability.discount_profile[y] * sum(vars["Cap_new"][cs,y] * param.cost.capex_cost_power[cs,y] for cs in dataset.conversion_subprocesses) 
                     for y in dataset.years
                 ),
                 name = "capex"
@@ -131,9 +131,9 @@ class Model():
         )
         constrs["re_availability"] = model.addConstrs(
             (
-                vars["Pout"][cs,y,t] <= vars["Cap_active"][cs,y] * param.availability.availability_factor[cs,t]
+                vars["Pout"][cs,y,t] <= vars["Cap_active"][cs,y] * param.availability.availability_profile[cs,t]
                 for y in dataset.years
-                for (cs,t) in param.availability.availability_factor 
+                for (cs,t) in param.availability.availability_profile 
             ),
             name = "re_availability"
         )
@@ -267,9 +267,9 @@ class Model():
         )
         constrs["load_shape"] = model.addConstrs(
             (
-                vars["Eouttime"][cs,y,t] == param.availability.output_factor[cs,t] * vars["Eouttot"][cs,y]     
+                vars["Eouttime"][cs,y,t] == param.availability.output_profile[cs,t] * vars["Eouttot"][cs,y]     
                 for y in dataset.years
-                for (cs,t) in param.availability.output_factor
+                for (cs,t) in param.availability.output_profile
             ),
             name = "load_shape"
         )

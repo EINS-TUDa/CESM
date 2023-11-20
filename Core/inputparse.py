@@ -274,9 +274,9 @@ class Parser:
         )
 
         availability_param = dtcls.AvailabilityParam(
-            availability_factor= self.params['availability_profile'],
+            availability_profile= self.params['availability_profile'],
             technical_availability = self.params['technical_availability'],
-            output_factor = self.params['output_profile']
+            output_profile = self.params['output_profile']
         )
 
         fraction_param = dtcls.FractionParam(

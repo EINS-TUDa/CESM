@@ -226,29 +226,29 @@ class TechnologyParam:
 
 @dataclass
 class AvailabilityParam:
-    availability_factor: Dict[Tuple[ConversionSubprocess,Time],Unit_in0_in1]
+    availability_profile: Dict[Tuple[ConversionSubprocess,Time],Unit_in0_in1]
     technical_availability: Dict[ConversionSubprocess,Unit_in0_in1]
-    output_factor: Dict[Tuple[ConversionSubprocess,Time], NonNegative]
-    discount_factor: Dict[Year,float] = field(init=False) # value is set in Input class
+    output_profile: Dict[Tuple[ConversionSubprocess,Time], NonNegative]
+    discount_profile: Dict[Year,float] = field(init=False) # value is set in Input class
     def __post_init__(self) -> None:
         self.technical_availability = defaultdict(one, self.technical_availability)
-        self._validate_output_factor()
+        self._validate_output_profile()
     def __repr__(self) -> str:
-        return str(self.availability_factor) + str(self.technical_availability) + str(self.output_factor)
+        return str(self.availability_profile) + str(self.technical_availability) + str(self.output_profile)
     
-    def _validate_output_factor(self):
-        for cs in {cs for (cs,t) in self.output_factor.keys()}:
-            values = [value for key,value in self.output_factor.items() if key[0]==cs]
+    def _validate_output_profile(self):
+        for cs in {cs for (cs,t) in self.output_profile.keys()}:
+            values = [value for key,value in self.output_profile.items() if key[0]==cs]
             if  len(values) > 0 and abs(sum(values) - 1.0) > 1e-4:
-                raise ValueError("Demand factors must sum to 1.0")
+                raise ValueError("Demand profile must sum to 1.0")
         
     def validate(self, dataset:Dataset) -> None:
-        dataset.validate_cs([cs for (cs,t) in self.availability_factor.keys()])
-        dataset.validate_t([t for (cs,t) in self.availability_factor.keys()])
+        dataset.validate_cs([cs for (cs,t) in self.availability_profile.keys()])
+        dataset.validate_t([t for (cs,t) in self.availability_profile.keys()])
         dataset.validate_cs(self.technical_availability.keys())
-        dataset.validate_cs([cs for (cs,t) in self.output_factor.keys()])
-        dataset.validate_t([t for (cs,t) in self.output_factor.keys()])
-        dataset.validate_y(self.discount_factor.keys())
+        dataset.validate_cs([cs for (cs,t) in self.output_profile.keys()])
+        dataset.validate_t([t for (cs,t) in self.output_profile.keys()])
+        dataset.validate_y(self.discount_profile.keys())
 
 @dataclass
 class FractionParam:
@@ -316,7 +316,7 @@ class Input:
     dataset: Dataset
 
     def __post_init__(self) -> None:
-        self.param.availability.discount_factor = {y:(1 + self.param.globalparam.discount_rate)**(int(self.dataset.years[0]) - int(y)) for y in self.dataset.years}
+        self.param.availability.discount_profile = {y:(1 + self.param.globalparam.discount_rate)**(int(self.dataset.years[0]) - int(y)) for y in self.dataset.years}
         # self.param.validate(self.dataset)
 
 
