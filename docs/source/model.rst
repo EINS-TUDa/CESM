@@ -20,7 +20,7 @@ Global
 - :math:`dt`: time step size. It shows how many hours each time step represents. Dimension: Time. Range: Positive.
 - :math:`w`: weight of each time step withim the whole year. It's equal to :math:`8760/|T|`. Range: Positive. default = 1.
 - :math:`discount\_rate`: The discount rate is the interest rate used to calculate the present value of future cash flows from a project or investment. For example, at an interest rate of 5%, the value of €100 will increase to €105 in one year. Dimension: -. Range: Non-negative.
-
+- :math:`disount\_factor(Y)`: Discount factor for year :math:`y` which is equal to :math:`disount\_factor(y)=(1+discount\_rate)^{y-Y[0]}`. Dimension: -. Range: Non-negative.
 
 Cost
 ~~~~
