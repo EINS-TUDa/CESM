@@ -8,12 +8,12 @@ Date: 18.10.2023
 from Core.inputparse import Parser
 from pathlib import Path
 from Core.model import Model
-from Core.plotter import Plotter, BarPlotType, TimeSeriesType
+from Core.plotter import Plotter, PlotType 
 from Core.datacls import save_input_output, read_input_output
 
 
 model_name = "TestModel" # model name
-model_name = "DEModel_V2" # model name
+#model_name = "DEModel_V2" # model name
 
 techmap_dir_path = Path(".").joinpath("Data", "Techmap") # techmap directory path
 ts_dir_path = Path(".").joinpath("Data", "TimeSeries") # time series directory path
@@ -42,7 +42,7 @@ input, output = read_input_output(filename="input_output.pkl")
 ##### Uncomment to visualize a chosen variable ######
 ipt, opt = read_input_output("input_output.pkl")
 plotter = Plotter(ipt, opt)
-fig = plotter.plot_sankey(2050)
+fig = plotter.plot_sankey(2020)
 # fig.write_image("images/fig1.pdf")
-plotter.plot_bars(BarPlotType.PRIMARY_ENERGY, commodity="Electricity")
-plotter.plot_timeseries(TimeSeriesType.POWER_CONSUMPTION, year=2020, commodity="Electricity")
+plotter.plot_bars(PlotType.Bar.PRIMARY_ENERGY,commodity="Electricity")
+plotter.plot_timeseries(PlotType.TimeSeries.POWER_CONSUMPTION, year=2020, commodity="Electricity")

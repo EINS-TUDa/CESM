@@ -11,13 +11,16 @@ from Core.datacls import Input, Output, get_as_dataframe, read_input_output
 
 import pandas as pd
 import random
-from enum import Enum
+from enum import Enum, member
 from typing import List
 
 class PlotterExeption(Exception):
    pass
 
-class BarPlotType(Enum):
+
+
+# -- Enums --
+class Bar(Enum):
    ENERGY_CONSUMPTION = 1
    ENERGY_PRODUCTION = 2
    ACTIVE_CAPACITY = 3
@@ -25,12 +28,22 @@ class BarPlotType(Enum):
    CO2_EMISSION = 5
    PRIMARY_ENERGY = 6
 
-class TimeSeriesType(Enum):
+
+class TimeSeries(Enum):
    ENERGY_CONSUMPTION = 1
    ENERGY_PRODUCTION = 2
    POWER_CONSUMPTION = 3
    POWER_PRODUCTION = 4
-   
+
+class Sankey(Enum):
+   SANKEY = 1
+
+class PlotType:
+   Bar = Bar
+   TimeSeries = TimeSeries
+   Sankey = Sankey
+
+ 
  
 # -- Helper Private Functions --
 
@@ -115,7 +128,7 @@ class Plotter:
       # fig.show()
       return fig
 
-   def plot_bars(self, bar_type: BarPlotType, commodity=None):
+   def plot_bars(self, bar_type: PlotType.Bar, commodity=None):
       """Main function for plotting bar plots
 
       Args:
@@ -130,13 +143,13 @@ class Plotter:
       self._check_commodity(commodity)
       stacks = 'cp' # Default Stacks
 
-      if bar_type == BarPlotType.CO2_EMISSION:
+      if bar_type == PlotType.Bar.CO2_EMISSION:
          data = get_as_dataframe(self.output.co2.Total_annual_co2_emission)
          title = f"CO2 Emission for {commodity}"
          stacks = None
          yaxis = "CO2 [t]"
 
-      elif bar_type == BarPlotType.PRIMARY_ENERGY:
+      elif bar_type == PlotType.Bar.PRIMARY_ENERGY:
          data = get_as_dataframe(self.output.energy.Eouttot, cin="Dummy")
          title = f"Primary Energy Use"
          yaxis = "Energy [MWh]"
@@ -146,19 +159,19 @@ class Plotter:
          if commodity is None:
             raise PlotterExeption("Commodity must be set for this plot!")
          
-         elif bar_type == BarPlotType.ENERGY_CONSUMPTION:
+         elif bar_type == PlotType.Bar.ENERGY_CONSUMPTION:
             data = get_as_dataframe(self.output.energy.Eintot, cin=commodity)
             title = f"Energy Consumption for {commodity}"
             yaxis = "Energy [MWh]"
-         elif bar_type == BarPlotType.ENERGY_PRODUCTION:
+         elif bar_type == PlotType.Bar.ENERGY_PRODUCTION:
             data = get_as_dataframe(self.output.energy.Eouttot, cout=commodity)
             title = f"Energy Production for {commodity}"
             yaxis = "Energy [MWh]"
-         elif bar_type == BarPlotType.ACTIVE_CAPACITY:
+         elif bar_type == PlotType.Bar.ACTIVE_CAPACITY:
             data = get_as_dataframe(self.output.power.Cap_active, cout=commodity)
             title = f"Active Capacity for {commodity}"
             yaxis = "Power [MW]"
-         elif bar_type == BarPlotType.NEW_CAPACITY:
+         elif bar_type == PlotType.Bar.NEW_CAPACITY:
             data = get_as_dataframe(self.output.power.Cap_new, cout=commodity)
             title = f"New Capacity for {commodity}"
             yaxis = "Power [MW]"
@@ -173,7 +186,7 @@ class Plotter:
 
       fig.show()
 
-   def plot_timeseries(self, timeseries_type: TimeSeriesType, year:int, commodity:str):
+   def plot_timeseries(self, timeseries_type: PlotType.TimeSeries, year:int, commodity:str):
       """Main function for plotting timeseries
 
       Args:
@@ -187,24 +200,24 @@ class Plotter:
 
       stacks = "cp" # Default Stacks
 
-      if timeseries_type == TimeSeriesType.ENERGY_CONSUMPTION:
+      if timeseries_type == PlotType.TimeSeries.ENERGY_CONSUMPTION:
          data = get_as_dataframe(self.output.energy.Eintime, cin=commodity, Year=year)
-         title = f"Energy Consumption for {commodity}"
+         title = f"Energy Consumption for {commodity} in {year}"
          yaxis = "Energy [MWh]"
       
-      elif timeseries_type == TimeSeriesType.ENERGY_PRODUCTION:
+      elif timeseries_type == PlotType.TimeSeries.ENERGY_PRODUCTION:
          data = get_as_dataframe(self.output.energy.Eouttime, cout=commodity, Year=year)
-         title = f"Energy Production for {commodity}"
+         title = f"Energy Production for {commodity} in {year}"
          yaxis = "Energy [MWh]"
      
-      elif timeseries_type == TimeSeriesType.POWER_CONSUMPTION:
+      elif timeseries_type == PlotType.TimeSeries.POWER_CONSUMPTION:
          data = get_as_dataframe(self.output.power.Pin, cin=commodity, Year=year)
-         title = f"Power Consumption for {commodity}"
+         title = f"Power Consumption for {commodity} in {year}"
          yaxis = "Power [MW]"
       
-      elif timeseries_type == TimeSeriesType.POWER_PRODUCTION:
+      elif timeseries_type == PlotType.TimeSeries.POWER_PRODUCTION:
          data = get_as_dataframe(self.output.power.Pout, cout=commodity, Year=year)
-         title = f"Power Production for {commodity}"
+         title = f"Power Production for {commodity} in {year}"
          yaxis = "Power [MW]"
 
       else:
@@ -303,10 +316,6 @@ class Plotter:
 
 # -- Fast Tests - Examples--
 if __name__ == "__main__":
-   ipt, opt = read_input_output("input_output.pkl")
-   plotter = Plotter(ipt, opt)
-   plotter.plot_sankey(2050)
-   plotter.plot_bars(BarPlotType.PRIMARY_ENERGY, commodity="Electricity")
-   plotter.plot_timeseries(TimeSeriesType.POWER_CONSUMPTION, year=2020, commodity="Electricity")
+   pass
 
 
