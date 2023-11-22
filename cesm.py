@@ -4,22 +4,18 @@
 #  mail@juliabarbosa.net
 # -------------------------------------------------- 
 
-import typing as t
 import click
 import os
-import sys
-import logging
 import time 
 from pathlib import Path
 
-from click.core import Context, Parameter
 from InquirerPy import prompt
 
 # -- internal imports -- #
 from Core.inputparse import Parser
 from Core.model import Model
 from Core.datacls import save_input_output, read_input_output
-from Core.plotter import Plotter, PlotType, Bar, TimeSeries
+from Core.plotter import Plotter, PlotType
 
 # Constants
 TECHMAP_DIR_PATH = Path(".").joinpath(os.getcwd(), 'Data', 'Techmap')
