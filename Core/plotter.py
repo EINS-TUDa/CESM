@@ -107,6 +107,8 @@ class Plotter:
       id_fun = lambda x: nodes.index(x)
       sankey_df["source_i"] = sankey_df["source"].apply(id_fun)
       sankey_df["target_i"] = sankey_df["target"].apply(id_fun)
+
+
       
       fig = go.Figure(data=[go.Sankey(
             arrangement='perpendicular',
@@ -115,12 +117,13 @@ class Plotter:
                 thickness=10,
                 line=dict(color="black", width=0.01),
                 label=nodes,
-                #color="rgb(150,150,150)"
+                color=_hex_to_rgba([self._get_color(n) for n in nodes], 0.8)
             ),
             link=dict(
                 source=sankey_df["source_i"],
                 target=sankey_df["target_i"],
                 value=sankey_df["value"],
+    
             ))])
 
       fig.update_layout(title_text="%s Sankey"%year, font_size=12)

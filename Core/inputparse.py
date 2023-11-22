@@ -107,7 +107,16 @@ class Parser:
         
     def read_co(self, tmap) -> None:
         df = pd.read_excel(tmap,"Commodity")
-        self.datasets["CO"] = list(dict.fromkeys([dtcls.Commodity(co) for co in df["commodity_name"].str.strip()]))
+        try:
+            self.datasets["CO"] = list(dict.fromkeys([dtcls.Commodity(co) for co in df["commodity_name"].str.strip()]))
+        except ValidationError as e:
+            # Check which commodity is not defined
+            for co in df["commodity_name"].str.strip():
+                try:
+                    dtcls.Commodity(co)
+                except ValidationError as e:
+                    print(f"Error in commodity {co} definition")
+                    raise e
     
     def read_scenario(self, tmap):
         df = pd.read_excel(tmap,"Scenario")
@@ -220,13 +229,12 @@ class Parser:
             cols = df.columns
             name_i, color_i, order_i = cols.get_loc(col_name), cols.get_loc("color"), cols.get_loc("order")
             for _, row in df.iterrows():
-                name = row[name_i]
+                name = row.iloc[name_i]
                 if not pd.isna(name):
-                    if not  pd.isna(row[color_i]):
-                        self.plot_settings["colors"][name] = row[color_i]
-                    if not pd.isna(row[order_i]):
-                        self.plot_settings["orders"][name] = row[order_i] if not pd.isna(row[order_i]) else None
-            print('stop')
+                    if not  pd.isna(row.iloc[color_i]):
+                        self.plot_settings["colors"][name] = row.iloc[color_i]
+                    if not pd.isna(row.iloc[order_i]):
+                        self.plot_settings["orders"][name] = row.iloc[order_i] if not pd.isna(row.iloc[order_i]) else None
             
 
     def get_interpolation_f(self, param):
