@@ -71,7 +71,7 @@ For `out\_frac\_min(CS,Y)` and `out\_frac\_max(CS,Y)` see :ref:`CHP <CHP>` examp
 
 Storage
 ~~~~~~~
-- :math:`c\_rate(CS)`: indicates the discharge and charging rate of the storage conversion subprocess :math:`cs`. 1C means that the full storage can be discharged in one hour. Range: Positive. Dimension: Power. 
+- :math:`c\_rate(CS)`: indicates the discharge and charging rate of the storage conversion subprocess :math:`cs`. 2C means that the full storage can be fully discharged in (1 hour)/2=30 minutes. Range: Positive. Dimension: Power. 
 - :math:`efficiency\_charge(CS)`: Storage charging efficiency of conversion subprocess :math:`cs`. Dimension: -. Range = (0,1]. default = 1. 
 
 Variables
