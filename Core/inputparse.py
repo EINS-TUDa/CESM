@@ -36,6 +36,10 @@ class Parser:
             "CP": None,
             "CO": None
         }
+        self.plot_settings={
+            "orders": dict(),
+            "colors": dict(),
+            }
 
         # Add here if model is changed
         self.param_index_dict = {
@@ -91,7 +95,8 @@ class Parser:
         self.read_co(tmap)
         self.read_cp(tmap)
         self.read_cs(tmap)
-        
+        self.read_plottingsettings(tmap)
+
     def read_units (self, tmap) -> None:
         df = pd.read_excel(tmap,"Units")
         self.units = dtcls.Units(**dict(zip(df["quantity"].str.strip(),df["scale_factor"])))
@@ -204,6 +209,26 @@ class Parser:
                                 key = (cs,t)
                                 self.params[p_name][key] = ts[i]
 
+    def read_plottingsettings(self, tmap):
+        
+        # Commodities
+        sheets = {"Commodity": "commodity_name",
+                   "ConversionProcess": "conversion_process_name"}
+
+        for sheet,col_name in sheets.items():
+            df = pd.read_excel(tmap,sheet)
+            cols = df.columns
+            name_i, color_i, order_i = cols.get_loc(col_name), cols.get_loc("color"), cols.get_loc("order")
+            for _, row in df.iterrows():
+                name = row[name_i]
+                if not pd.isna(name):
+                    if not  pd.isna(row[color_i]):
+                        self.plot_settings["colors"][name] = row[color_i]
+                    if not pd.isna(row[order_i]):
+                        self.plot_settings["orders"][name] = row[order_i] if not pd.isna(row[order_i]) else None
+            print('stop')
+            
+
     def get_interpolation_f(self, param):
         """
         Get the interpolation function for the pairs inputed in the techmap
@@ -314,7 +339,12 @@ class Parser:
             storage_cs = [cs for cs in self.params['is_storage'] if self.params['is_storage'][cs]]
         )
 
-        input = dtcls.Input(dataset=dataset, param=param)
+        plot_settings = dtcls.PlotSettings(
+            orders = self.plot_settings["orders"],
+            colors = self.plot_settings["colors"]
+        )
+
+        input = dtcls.Input(dataset=dataset, param=param, plot_settings=plot_settings)
         return input
 
 

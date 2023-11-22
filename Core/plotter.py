@@ -73,9 +73,8 @@ class Plotter:
          sankey_link_opacity=0.5,
       )
 
-      # TODO: Add color/order configuration file to input
-      self._colors = dict()
-      self._order =  dict()
+      self._colors = ipt.plot_settings.colors
+      self._order =  ipt.plot_settings.orders
 
 
    # -- Main Plotting Functions --   
@@ -140,7 +139,6 @@ class Plotter:
           PlotterExeption: Invalid type for plotting!
       """
 
-      self._check_commodity(commodity)
       stacks = 'cp' # Default Stacks
 
       if bar_type == PlotType.Bar.CO2_EMISSION:
@@ -156,6 +154,7 @@ class Plotter:
       
       else:
          # Check if commodity is set
+         self._check_commodity(commodity)
          if commodity is None:
             raise PlotterExeption("Commodity must be set for this plot!")
          

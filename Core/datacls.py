@@ -312,14 +312,18 @@ class Param:
         self.capacity.scale(self.units)
 
 @dataclass
+class PlotSettings:
+    colors: Dict[str,str]
+    orders: Dict[str,int]
+
+@dataclass
 class Input:
     param: Param
     dataset: Dataset
-
+    plot_settings:PlotSettings
     def __post_init__(self) -> None:
         self.param.globalparam.discount_factor = {y:(1 + self.param.globalparam.discount_rate)**(int(self.dataset.years[0]) - int(y)) for y in self.dataset.years}
         # self.param.validate(self.dataset)
-
 
 
 @dataclass
