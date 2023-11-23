@@ -63,11 +63,11 @@ class Model():
         # Costs
         constrs["totex"] = model.addConstr(vars["TOTEX"] == vars["CAPEX"] + vars["OPEX"], name="totex")
         constrs["capex"] = model.addConstr(
-                vars["CAPEX"] == sum(
+                vars["CAPEX"] == sum(param.globalparam.discount_factor[y]*(
                     param.co2.co2_price[y] * vars["Total_annual_co2_emission"][y] +
-                    param.globalparam.discount_factor[y] * sum(vars["Cap_new"][cs,y] * param.cost.capex_cost_power[cs,y] for cs in dataset.conversion_subprocesses) 
-                    for y in dataset.years
-                ),
+                    sum(vars["Cap_new"][cs,y] * param.cost.capex_cost_power[cs,y] for cs in dataset.conversion_subprocesses)
+                ) 
+                for y in dataset.years),
                 name = "capex"
             )
         model.addConstr(
@@ -137,7 +137,14 @@ class Model():
             ),
             name = "re_availability"
         )
-        
+        constrs["technical_availability"] = model.addConstrs(
+            (
+                vars["Pout"][cs,y,t] <= vars["Cap_active"][cs,y] * param.availability.technical_availability[cs]
+                for cs in dataset.conversion_subprocesses
+                for y in dataset.years
+                for t in dataset.times            
+            )
+        ) 
         # Power Energy Constraints
         constrs["eouttime"] = model.addConstrs(
             (
@@ -349,7 +356,7 @@ class Model():
         co2 = dtcls.CO2Output(Total_annual_co2_emission= {y:vars["Total_annual_co2_emission"][y].X for y in dataset.years})
         power = dtcls.PowerOutput(
             Cap_new= {(cs,y): vars["Cap_new"][cs,y].X for (cs,y) in cs_y_indexes},
-            Cap_active= {(cs,y): vars["Cap_new"][cs,y].X for (cs,y) in cs_y_indexes},
+            Cap_active= {(cs,y): vars["Cap_active"][cs,y].X for (cs,y) in cs_y_indexes},
             Cap_res= {(cs,y): vars["Cap_res"][cs,y].X for (cs,y) in cs_y_indexes},
             Pin= {(cs,y,t): vars["Pin"][cs,y,t].X for (cs,y,t) in cs_y_t_indexes},
             Pout= {(cs,y,t): vars["Pout"][cs,y,t].X for (cs,y,t) in cs_y_t_indexes},
