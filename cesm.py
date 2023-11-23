@@ -174,7 +174,10 @@ def plot(simulation):
          for y in years:
             f = plotter.plot_sankey(y)
             f.show()
-      
+
+      elif plot_type == 'SingleValue':
+         plotter.plot_single_value([getattr(p_type, p) for p in plots])
+
       more_plots = prompt(get_list_inquirer_choices(['yes', 'no'], name='more_plots', message='Would you like to plot more?'))['more_plots']
       if more_plots == 'no':
          break

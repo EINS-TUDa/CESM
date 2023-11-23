@@ -27,7 +27,13 @@ class Bar(Enum):
    NEW_CAPACITY = 4 
    CO2_EMISSION = 5
    PRIMARY_ENERGY = 6
+   CO2_PRICE = 7
 
+class SingleValue(Enum):
+
+   CAPEX = 8
+   OPEX = 9
+   TOTEX = 10
 
 class TimeSeries(Enum):
    ENERGY_CONSUMPTION = 1
@@ -42,6 +48,7 @@ class PlotType:
    Bar = Bar
    TimeSeries = TimeSeries
    Sankey = Sankey
+   SingleValue = SingleValue
 
  
  
@@ -130,6 +137,29 @@ class Plotter:
       # fig.show()
       return fig
 
+   def plot_single_value(self, single_value_type: list[PlotType.SingleValue]):
+      # Gather Data
+      data = dict()
+      for sv_ty in single_value_type:
+         if sv_ty == PlotType.SingleValue.CAPEX:
+            data["CAPEX"] = self.output.cost.CAPEX
+         elif sv_ty == PlotType.SingleValue.OPEX:
+            data["OPEX"] = self.output.cost.OPEX
+         elif sv_ty == PlotType.SingleValue.TOTEX:
+            data["TOTEX"] = self.output.cost.TOTEX
+         else:
+            raise PlotterExeption("Invalid type for plotting!")
+      
+      # Create Figure
+      traces = go.Bar(x=list(data.keys()), y=list(data.values()))
+      layout = self._get_default_layout(title="Costs", yaxistitle="Costs [€]")
+      fig = go.Figure(data=traces, layout=layout)
+      fig.show()
+
+
+
+
+
    def plot_bars(self, bar_type: PlotType.Bar, commodity=None):
       """Main function for plotting bar plots
 
@@ -149,6 +179,13 @@ class Plotter:
          title = f"CO2 Emission for {commodity}"
          stacks = None
          yaxis = "CO2 [t]"
+
+      elif bar_type == PlotType.Bar.CO2_PRICE:
+         data = get_as_dataframe(self.input.param.co2.co2_price)
+         title = f"CO2 Price"
+         stacks = None
+         yaxis = "Price [€/t]"
+
 
       elif bar_type == PlotType.Bar.PRIMARY_ENERGY:
          data = get_as_dataframe(self.output.energy.Eouttot, cin="Dummy")
