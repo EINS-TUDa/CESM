@@ -7,11 +7,11 @@
 import plotly.graph_objects as go
 import plotly.colors as plc
 
-from Core.datacls import Input, Output, get_as_dataframe, read_input_output
+from Core.datacls import Input, Output, get_as_dataframe
 
 import pandas as pd
 import random
-from enum import Enum, member
+from enum import Enum
 from typing import List
 
 class PlotterExeption(Exception):
