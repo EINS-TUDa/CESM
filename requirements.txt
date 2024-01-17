@@ -3,8 +3,9 @@ numpy
 scipy
 pandas
 gurobipy
-pydantic
 plotly
 kaleido
 click
 InquirerPy
+SQLAlchemy
+sqlite3
