@@ -20,7 +20,7 @@ Global
 - :math:`dt`: time step size. It shows how many hours each time step represents. Dimension: Time. Range: Positive.
 - :math:`w`: weight of each time step withim the whole year. It's equal to :math:`8760/|T|`. Range: Positive. default = 1.
 - :math:`discount\_rate`: The discount rate is the interest rate used to calculate the present value of future cash flows from a project or investment. For example, at an interest rate of 5%, the value of €100 will increase to €105 in one year. Dimension: -. Range: Non-negative.
-- :math:`disount\_factor(Y)`: Discount factor for year :math:`y` which is equal to :math:`disount\_factor(y)=(1+discount\_rate)^{y-Y[0]}`. Dimension: -. Range: Non-negative.
+- :math:`discount\_factor(Y)`: Discount factor for year :math:`y` which is equal to :math:`discount\_factor(y)=(1+discount\_rate)^{y-Y[0]}`. Dimension: -. Range: Non-negative.
 
 Cost
 ~~~~
@@ -163,10 +163,17 @@ Power output
 
 :eq:`max_power_out_eq` The output is limited by the capacity of the conversion subprocess.
 
+.. math:: Pout[cs,y,t] \leq Cap\_active[cs,y] * technical\_availability[cs] \quad  \forall y\in Y,\forall t\in T, \forall cs\in CS
+    :label: re_availability_eq
+
+:eq:`technical_availability_eq` The Generation of renewable energy is limited by the availability profile.
+
 .. math:: Pout[cs,y,t] \leq Cap\_active[cs,y] * availability\_profile[cs,t] \quad  \forall y\in Y,\forall t\in T, \forall cs\in CS \setminus SCS
     :label: re_availability_eq
 
 :eq:`re_availability_eq` The Generation of renewable energy is limited by the availability profile.
+
+
 
 Power-Energy
 ~~~~~~~~~~~~~~~~~~~~~~~~
@@ -217,7 +224,7 @@ Capacity
 .. math:: Cap\_active[cs,y] \geq cap\_min[cs,y] \quad \forall y\in Y, \forall cs\in CS
     :label: min_active_capacity_eq
 
-Auxiliary Variables Linking
+Auxiliary Linking Variables
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. math:: Eouttot[cs,y] = \sum_{t \in T} Eouttime[cs,t,y]  \quad \forall y\in Y, \forall cs\in CS
@@ -254,7 +261,7 @@ Storage
 .. math:: Pin[cs,t,y] \leq Cap\_active[cs, y] \quad \forall y\in Y, \forall t\in T, \forall cs\in SCS
     :label: charge_power_limit
 
-.. math:: E\_storage\_level[cs,t,y] = E\_storage\_level[cs, t-1, y] + efficiency\_charge[cs] * Pin[cs, t,y] * dt - (Pout[cs,t,y]*dt)/(efficiency[cs]) \quad \forall y\in Y, \forall t\in T, \forall cs\in CS
+.. math:: E\_storage\_level[cs,t,y] = E\_storage\_level[cs, t-1, y] + efficiency\_charge[cs] * Pin[cs, t,y] * dt * w- (Pout[cs,t,y]*dt*w)/(efficiency[cs]) \quad \forall y\in Y, \forall t\in T, \forall cs\in SCS
     :label: storage_energy_balance
 
 .. math:: E\_storage\_level\_max[cs, y] = Cap\_active[cs, y]/c\_rate[cs] \quad \forall y\in Y, \forall cs\in SCS
