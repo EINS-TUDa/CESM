@@ -6,6 +6,7 @@ from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.orm import Mapped
 from sqlalchemy.orm import mapped_column
 from sqlalchemy.orm import relationship
+from Core import datacls as dtcls
 
 class Base(DeclarativeBase):
     pass
@@ -92,21 +93,10 @@ class Param_CS_T(Base):
     t: Mapped["Time"] = relationship()
 
 
-# class User(Base):
-#     __tablename__ = "user_account"
-#     id: Mapped[int] = mapped_column(primary_key=True)
-#     name: Mapped[str] = mapped_column(String(30))
-#     fullname: Mapped[Optional[str]]
-#     addresses: Mapped[List["Address"]] = relationship(
-#         back_populates="user", cascade="all, delete-orphan"
-#     )
+def convert(input: dtcls.Input) -> None:
+    times = [Time(order=i, value=int(t)) for i, t in enumerate(input.dataset.times)]
+    years = [Year(order=i, value=int(y)) for i, y in enumerate(input.dataset.years)]
+    commodities = [Commodity(name=str(co)) for i, co in enumerate(input.dataset.commodities)]
+    conversion_processes = [ConversionProcess(name=str(cp)) for cp in input.dataset.conversion_processes]
+    conversion_subprocesses = [ConversionSubprocess(name=str(cs); cin=cs.cin, cout=str(cout.cout), cp=) for cs in input.dataset.conversion_subprocesses]
 
-
-# class Address(Base):
-#     __tablename__ = "address"
-#     id: Mapped[int] = mapped_column(primary_key=True)
-#     email_address: Mapped[str]
-#     user_id: Mapped[int] = mapped_column(ForeignKey("user_account.id"))
-#     user: Mapped["User"] = relationship(back_populates="addresses")
-#     def __repr__(self) -> str:
-#         return f"Address(id={self.id!r}, email_address={self.email_address!r})"
