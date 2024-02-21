@@ -14,4 +14,4 @@ To visualize the results of a simulation you have to use the following command:
 
    > python cesm.py plot
 
-Then it asks for the name of the model and the scenario, the type of the plot and the variable to plot.
+Then it asks for the name of the model, the scenario, the type of the plot and the variable to plot.
