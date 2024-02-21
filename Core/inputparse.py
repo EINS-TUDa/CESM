@@ -155,10 +155,11 @@ class Parser:
         row_index = df.index[df["TSS_name"]==self.tss_name].tolist()[0]
 
         self.params["dt"] = df["dt"][row_index]
-        tss_file_path = self.ts_dir_path.joinpath(f"{self.tss_name}.csv")
-        df = pd.read_csv(tss_file_path , header=None)
-        
-        tss_values = df[3].values
+        tss_file_path = self.ts_dir_path.joinpath(f"{self.tss_name}.txt")
+
+        tss_file = open(tss_file_path)
+        tss_array = tss_file.read().split("\n")
+        tss_values = [int(x) for x in tss_array if x != ""]
         self.datasets["T"] = [dtcls.Time(ts) for ts in tss_values]
         self.params["w"] = (8760/len(self.datasets["T"]))/self.params["dt"]
         
