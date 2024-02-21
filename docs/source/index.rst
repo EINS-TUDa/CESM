@@ -16,6 +16,7 @@ An example of the German energy system is also provided. The results of the mode
    model
    techmap
    example
+   cli
 
 
 

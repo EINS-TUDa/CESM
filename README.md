@@ -4,6 +4,7 @@ The optimal output of the model determines how much should be invested in each p
 
 An example of the German energy system is also provided. The results of the model are compatible with the results of the paper "Barbosa, Julia, Christopher Ripp, and Florian Steinke. Accessible Modeling of the German Energy Transition: An Open, Compact, and Validated Model. Energies 14, no. 23 (2021)"
 
+![image description](images/plot.png)
 
 ## Installation
 Download and Install the following software from their official websites:

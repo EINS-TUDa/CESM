@@ -139,7 +139,10 @@ dmypy.json
 
 # lp or rlp files
 *.lp
+*.mps
 *.rlp
+*.dua
+*.dlp
 
 # Drawio backup files
 *.drawio.bkp
