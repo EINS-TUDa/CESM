@@ -108,7 +108,7 @@ class Parser:
     def read_co(self, tmap) -> None:
         df = pd.read_excel(tmap,"Commodity")
         try:
-            self.datasets["CO"] = list(dict.fromkeys([dtcls.Commodity(co) for co in df["commodity_name"].str.strip()]))
+            self.datasets["CO"] = list(dict.fromkeys([dtcls.Commodity(co.strip()) for co in df["commodity_name"] if not pd.isna(co)]))
         except ValidationError as e:
             # Check which commodity is not defined
             for co in df["commodity_name"].str.strip():
