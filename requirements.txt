@@ -8,5 +8,4 @@ kaleido
 click
 InquirerPy
 SQLAlchemy
-sqlite3
 pyarrow
