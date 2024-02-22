@@ -10,10 +10,10 @@ from pathlib import Path
 from Core.model import Model
 from Core.plotter import Plotter, PlotType 
 from Core.datacls import save_input_output, read_input_output
+from Core.db import generate_db_input, write_to_db
 
-
-model_name = "TestModel" # model name
-#model_name = "DEModel_V2" # model name
+# model_name = "TestModel" # model name
+model_name = "DEModel_V2" # model name
 
 techmap_dir_path = Path(".").joinpath("Data", "Techmap") # techmap directory path
 ts_dir_path = Path(".").joinpath("Data", "TimeSeries") # time series directory path
@@ -21,6 +21,9 @@ parser = Parser(model_name,techmap_dir_path=techmap_dir_path, ts_dir_path=ts_dir
 print("### parsing started ###")
 parser.parse()
 input = parser.get_input()
+db_input = generate_db_input(input)
+write_to_db(db_input)
+raise Exception("stop")
 print("### parsing finished ###")
 print("#### building model started ###")
 model = Model(input)
