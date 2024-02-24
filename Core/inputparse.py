@@ -87,14 +87,15 @@ class Parser:
     #     return sim_folder
 
     
-    def parse(self):
+    def parse(self,cs_df=[]):
+        # cs_df should be used only for GSA, otherwise, keep it disabled
         tmap = pd.ExcelFile(self.techmap_path)
         self.read_units(tmap)
         self.read_scenario(tmap)
         self.read_tss(tmap)
         self.read_co(tmap)
         self.read_cp(tmap)
-        self.read_cs(tmap)
+        self.read_cs(tmap,cs_df)
         self.read_plottingsettings(tmap)
 
     def read_units (self, tmap) -> None:
@@ -162,8 +163,11 @@ class Parser:
         self.datasets["T"] = [dtcls.Time(ts) for ts in tss_values]
         self.params["w"] = (8760/len(self.datasets["T"]))/self.params["dt"]
         
-    def read_cs(self, tmap):
-        df = pd.read_excel(tmap,"ConversionSubProcess",  skiprows=[1, 2])
+    def read_cs(self, tmap, cs_df):
+        if len(cs_df) == 0:
+            df = pd.read_excel(tmap,"ConversionSubProcess",  skiprows=[1, 2])
+        else:
+            df = cs_df
         
         # TO DO - verify the scenario of the conversion process
         self.datasets["CS"] = []

@@ -7,7 +7,9 @@
 import click
 import os
 import time 
+import pickle
 from pathlib import Path
+from datetime import datetime
 
 from InquirerPy import prompt
 
@@ -16,11 +18,13 @@ from Core.inputparse import Parser
 from Core.model import Model
 from Core.datacls import save_input_output, read_input_output
 from Core.plotter import Plotter, PlotType
+from Core.gsasampler import GSASampler
 
 # Constants
 TECHMAP_DIR_PATH = Path(".").joinpath(os.getcwd(), 'Data', 'Techmap')
 TS_DIR_PATH = Path(".").joinpath(os.getcwd(), 'Data', 'TimeSeries')
 RUNS_DIR_PATH = Path(".").joinpath(os.getcwd(), 'Runs')
+GSA_DIR_PATH = Path(".").joinpath(os.getcwd(), 'GSAResults')
 FNAME_MODEL = 'input_output.pkl'
 # -- Helpers -- #
 def get_existing_models():
@@ -115,6 +119,7 @@ def run(model_name, scenario):
    print("\n#-- Saving model started --#")
    st = time.time()
    model_output = model_instance.get_output()
+   model_instance.output_list_to_pkl()
    
    # Create a directory for the model if it does not exist
    path = os.path.join(RUNS_DIR_PATH, model_name+'-'+scenario)
@@ -183,6 +188,66 @@ def plot(simulation):
          break
    
    click.echo("Plotting finished!")
+   
+@app.command(name='gsa')
+@click.option("--model_name",'-m', type=ModelChoice(get_existing_models()))
+@click.option("--scenario",'-s', type=click.STRING)
+@click.option("--input_samples",'-i', type=click.STRING)
+def run(model_name, scenario, input_samples):
+   """Run the Model"""
+   print(f'Running model {model_name} with scenario {scenario}')
+   
+   run_date = datetime.now().strftime("%d-%m-%y_%H-%M")
+
+   # If no scenario or model is provided, prompt the user to choose one
+   if model_name is None:
+      model_name = prompt(get_list_inquirer_choices(get_existing_models(), name='model_name', message='Please choose a model to run'))['model_name']
+   if scenario is None:
+      scenario = click.prompt('Please enter a scenario name', type=click.STRING)
+   if input_samples is None:
+      """Generate Samples"""
+      print("\n#-- Generating input samples --#")
+      st = time.time()
+      sampler = GSASampler(model_name, techmap_dir_path=TECHMAP_DIR_PATH, ts_dir_path=TS_DIR_PATH ,scenario = scenario)
+      input_samples = sampler.generate_morris_samples(run_date)
+      print(f"Sampling finished in {time.time()-st:.2f} seconds")
+   else:
+      sample_input = []
+      with (open(f'GSASamples/{input_samples}', "rb")) as openfile:
+         while True:
+            try:
+               sample_input.append(pickle.load(openfile))
+            except EOFError:
+               break
+      input_samples = sample_input[0]
+   
+   for i in range(len(input_samples)):
+      # Build
+      print(f"\n#-- Run #{i+1} --#")
+      print("\n#-- Building model started --#")
+      st = time.time()
+      model_input = input_samples[0]
+      model_instance = Model(model_input)
+      print(f"Building model finished in {time.time()-st:.2f} seconds")
+
+      # Solve
+      print("\n#-- Solving model started --#")
+      st = time.time()
+      model_instance.solve()
+      opt_status = model_instance.getStatus()
+      print(f"Solving model finished in {time.time()-st:.2f} seconds")
+      
+      # Create a directory for the model if it does not exist
+      path = os.path.join(GSA_DIR_PATH, model_name+'-'+scenario+'-'+run_date)
+      if not os.path.exists(path):
+         os.mkdir(path)
+
+      # Save
+      print("\n#-- Saving model started --#")
+      st = time.time()
+      model_instance.output_list_to_pkl(os.path.join(path, 'results_simulations.pkl'),opt_status)
+      
+      print(f"Saving model finished in {time.time()-st:.2f} seconds")
 
 
 if __name__ == "__main__":

@@ -10,6 +10,7 @@ import gurobipy as gp
 from gurobipy import GRB
 from Core import datacls as dtcls
 from Core.inputparse import Parser
+import pickle
 
 class Model():
     def __init__(self, data: dtcls.Input) -> None:
@@ -345,6 +346,9 @@ class Model():
     def solve(self) -> None:
         return self.model.optimize()
     
+    def getStatus(self):
+        return self.model.status
+    
     def get_output(self) -> dtcls.Output:
         dataset = self.data.dataset # alias for readability
         vars = self.vars # alias for readability
@@ -382,7 +386,55 @@ class Model():
             storage= storage
         )
         return output
-
+    
+    def get_output_as_list(self):
+        dataset = self.data.dataset # alias for readability
+        vars = self.vars # alias for readability
+        # Extract solution
+        cs_y_indexes = [(cs,y) for cs in dataset.conversion_subprocesses for y in dataset.years]
+        cs_y_t_indexes = [(cs,y,t) for cs in dataset.conversion_subprocesses for y in dataset.years for t in dataset.times]
+        co_y_t_indexes = [(co,y,t) for co in dataset.commodities for y in dataset.years for t in dataset.times]
+        
+        output_var_names = ["OPEX", "CAPEX", "TOTEX"]
+        output_vars = [vars["OPEX"].X, vars["CAPEX"].X, vars["TOTEX"].X]
+        for y in dataset.years:
+            output_var_names.append(f"Total_annual_co2_emission_{y._value}")
+            output_vars.append(vars["Total_annual_co2_emission"][y].X)
+        for (cs,y) in cs_y_indexes:
+            if (y._value in [2030,2060]) and (cs.cin._value != 'DEBUG') and (cs.cout._value != 'DEBUG'):
+                output_var_names.append(f'{"Cap_active"}_{cs.cp._value}_{cs.cin._value}_{cs.cout._value}_{y._value}')
+                output_vars.append(vars["Cap_active"][cs,y].X)
+                output_var_names.append(f'{"Eouttot"}_{cs.cp._value}_{cs.cin._value}_{cs.cout._value}_{y._value}')
+                output_vars.append(vars["Eouttot"][cs,y].X)
+                
+        return [output_var_names, output_vars]
+    
+    def output_list_to_pkl(self,path,status):
+        # TODO implement way of checking for different GSA runs
+        if status==gp.GRB.INFEASIBLE:
+            output_var_names = []
+            output_vars = []
+        else:
+            output_var_names, output_vars = self.get_output_as_list() 
+                 
+        try:
+            objects = []
+            with (open(path, "rb")) as openfile:
+                while True:
+                    try:
+                        objects.append(pickle.load(openfile))
+                    except EOFError:
+                        break
+            out_dict = objects[0]
+            next_run = len(out_dict["runs"]) + 1
+            if len(out_dict["output_var_names"])==0:
+                out_dict["output_var_names"] = output_var_names
+            out_dict["runs"][next_run] = output_vars
+            out_dict["infeasible"].append(status==gp.GRB.INFEASIBLE)
+        except:
+            out_dict = {"output_var_names": output_var_names, "infeasible":[status==gp.GRB.INFEASIBLE], "runs":{1: output_vars}}
+        with open(path, 'wb') as f:
+            pickle.dump(out_dict, f, protocol=pickle.HIGHEST_PROTOCOL)
     
     def save_results(self, sol_file_path: Path) -> None:
         self.model.write(str(sol_file_path))
