@@ -21,7 +21,7 @@ class GSASampler:
         self.ts_dir_path = ts_dir_path
         self.scenario = scenario
     
-    def generate_morris_samples(self,run_date):
+    def generate_morris_samples(self,run_date,result_path):
         tmap = pd.ExcelFile(self.techmap_path)
         df = pd.read_excel(tmap,"ConversionSubProcess",skiprows=[1,2]).drop(columns=['is_storage', 'efficiency', 'technical_availability', 'output_profile', 'availability_profile'])
 
@@ -42,19 +42,15 @@ class GSASampler:
                     if type(value) == str:
                         year_values = pattern.split(value[1:-1])
                         for j in range(0, len(year_values), 2):
-                            year_value = 0 if year_values[j+1] == 'NaN' else float(year_values[j+1])
+                            year_value = -1 if year_values[j+1] == 'NaN' else float(year_values[j+1])
                             cs_names = np.append(cs_names, f'{cs_name}&{col}&{year_values[j]}')
                             cs_values = np.append(cs_values, year_value)
                     else:
                         cs_names = np.append(cs_names, f'{cs_name}&{col}')
                         cs_values = np.append(cs_values, value)
                 
-        fixed_yearly_values = np.array([])
-        fixed_yearly_names = np.array([])
-        fixed_values = np.array([])
-        fixed_names = np.array([])
-        range_values = np.empty((0,2), dtype=float)
-        range_names = np.array([])
+        original_params = {}
+        modified_params = {}
 
         # TODO revise these definitions
         fraction_params = ['efficiency_charge', 'out_frac_min', 'out_frac_max', 'in_frac_min', 'in_frac_max']
@@ -71,30 +67,20 @@ class GSASampler:
                 percentage_range = 0.1
             is_fraction = True if any(substring in cs_names[i] for substring in fraction_params) else False
                 
-            # TODO remove second condition after determining infeasible variables
-            # Only the problem_params are resulting in infeasibility (398 samples with and 298 without them for opt_t 2)
-            if (cs_values[i] == 0 or cs_values[i] == 1):# or any(substring in cs_names[i] for substring in problem_params):
-                split_name = cs_names[i].split('&')
-                is_yearly = False if len(split_name) == 4 else True
-                if is_yearly:
-                    fixed_yearly_names = np.append(fixed_yearly_names, cs_names[i])
-                    fixed_yearly_values = np.append(fixed_yearly_values, cs_values[i])
-                else:
-                    fixed_names = np.append(fixed_names, cs_names[i])
-                    fixed_values = np.append(fixed_values, cs_values[i])
-            else:
+            original_params[cs_names[i]] = cs_values[i]
+            
+            if not (cs_values[i] == 0 or cs_values[i] == 1 or cs_values[i] == -1) and not(any(substring in cs_names[i] for substring in problem_params)):
                 value_range = [cs_values[i]*(1-percentage_range), cs_values[i]*(1+percentage_range)]
                 if is_fraction:
-                    if value_range[0] < 0:
-                        value_range -= value_range[0]
-                    elif value_range[1] > 1:
-                        value_range -= (value_range[1] - 1)
-                range_names = np.append(range_names, cs_names[i])
-                range_values = np.vstack((range_values, value_range))
-                
+                    np.clip(value_range,0,1)
+                modified_params[cs_names[i]] = value_range       
     
         # Define the model inputs
-        
+        problem = {
+            'num_vars': len(modified_params),
+            'names': list(modified_params.keys()),
+            'bounds': list(modified_params.values())
+        }
         try:
             objects = []
             with (open('GSAResults/var_names.pkl', "rb")) as openfile:
@@ -104,23 +90,13 @@ class GSASampler:
                     except EOFError:
                         break
             out_names = objects[0]
-            problem = {
-                'num_vars': len(range_names),
-                'names': range_names.tolist(),
-                'bounds': range_values.tolist(),
-                'outputs': out_names
-            }
+            problem['outputs'] = out_names
         except:
-            problem = {
-                'num_vars': len(range_names),
-                'names': range_names.tolist(),
-                'bounds': range_values.tolist()
-            }
-        
+            pass
 
         # Generate samples
-        trajectories = 100
-        optimal_trajectories = 2#4
+        trajectories = 1000
+        optimal_trajectories = 4
         start_time = time.time()
         samples = morris_sample(problem, trajectories, optimal_trajectories=optimal_trajectories)
         sampling_time = time.time() - start_time
@@ -129,18 +105,24 @@ class GSASampler:
         input_dfs = []
 
         for i in range(len(samples)):
+            new_params = original_params
+            for idx, key in enumerate(modified_params):
+                new_params[key] = samples[i][idx]
             mod_cs = base_cs.copy()
             last_yearly = ''
             yearly_input = []
+            range_names = list(new_params.keys())
             for j in range(len(range_names)):
                 split_name = range_names[j].split('&')
                 is_yearly = False if len(split_name) == 4 else True
                 if is_yearly:
                     if range_names[j][:-5] != last_yearly:
                         last_yearly = range_names[j][:-5]
-                        yearly_input = f'[{split_name[-1]} {samples[i][j]}'
+                        value = new_params[range_names[j]] if new_params[range_names[j]] != -1 else 'NaN'
+                        yearly_input = f'[{split_name[-1]} {value}'
                     else:
-                        yearly_input = f'{yearly_input};{split_name[-1]} {samples[i][j]}'
+                        value = new_params[range_names[j]] if new_params[range_names[j]] != -1 else 'NaN'
+                        yearly_input = f'{yearly_input};{split_name[-1]} {value}'
                         if j != len(range_names) - 1:
                             if range_names[j+1][:-5] != range_names[j][:-5]:
                                 yearly_input = f'{yearly_input}]'
@@ -148,26 +130,10 @@ class GSASampler:
                                         (mod_cs['commodity_in']==split_name[1])&
                                         (mod_cs['commodity_out']==split_name[2]),split_name[3]] = yearly_input
                 else:
+                    value = new_params[range_names[j]] if new_params[range_names[j]] != -1 else 'NaN'
                     mod_cs.loc[(mod_cs['conversion_process_name']==split_name[0])&
                             (mod_cs['commodity_in']==split_name[1])&
-                            (mod_cs['commodity_out']==split_name[2]),split_name[3]] = samples[i][j]
-            last_yearly = ''
-            for j in range(len(fixed_yearly_names)):
-                split_name = fixed_yearly_names[j].split('&')
-                if fixed_yearly_names[j][:-5] != last_yearly:
-                    last_yearly = fixed_yearly_names[j][:-5]
-                    yearly_input = f';{split_name[-1]} {fixed_yearly_values[j]}'
-                else:
-                    yearly_input = f'{yearly_input};{split_name[-1]} {fixed_yearly_values[j]}'
-                    if j != len(fixed_yearly_names) - 1:
-                        if fixed_yearly_names[j+1][:-5] != fixed_yearly_names[j][:-5]:
-                            yearly_input = f'{yearly_input}]'
-                            current_input = mod_cs.loc[(mod_cs['conversion_process_name']==split_name[0])&
-                                                       (mod_cs['commodity_in']==split_name[1])&
-                                                       (mod_cs['commodity_out']==split_name[2]),split_name[3]]
-                            mod_cs.loc[(mod_cs['conversion_process_name']==split_name[0])&
-                                    (mod_cs['commodity_in']==split_name[1])&
-                                    (mod_cs['commodity_out']==split_name[2]),split_name[3]] = current_input[:-1]+yearly_input
+                            (mod_cs['commodity_out']==split_name[2]),split_name[3]] = value
             input_dfs.append(mod_cs)
             
         parser = Parser(self.model_name, techmap_dir_path=self.techmap_dir_path, ts_dir_path=self.ts_dir_path, scenario=self.scenario)
@@ -180,5 +146,9 @@ class GSASampler:
             pickle.dump(parsed_samples, f, protocol=pickle.HIGHEST_PROTOCOL)
         with open(f'GSASamples/dfs_{len(parsed_samples)}.pkl', 'wb') as f:
             pickle.dump(input_dfs, f, protocol=pickle.HIGHEST_PROTOCOL)
+        with open(f'{result_path}/X.pkl', 'wb') as f:
+            pickle.dump(samples, f, protocol=pickle.HIGHEST_PROTOCOL)
+        with open(f'{result_path}/problem_def.pkl', 'wb') as f:
+            pickle.dump(problem, f, protocol=pickle.HIGHEST_PROTOCOL)
             
         return parsed_samples

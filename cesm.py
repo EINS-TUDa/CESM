@@ -198,6 +198,11 @@ def run(model_name, scenario, input_samples):
    print(f'Running model {model_name} with scenario {scenario}')
    
    run_date = datetime.now().strftime("%d-%m-%y_%H-%M")
+   
+   # Create a directory for the model if it does not exist
+   path = os.path.join(GSA_DIR_PATH, model_name+'-'+scenario+'-'+run_date)
+   if not os.path.exists(path):
+      os.mkdir(path)
 
    # If no scenario or model is provided, prompt the user to choose one
    if model_name is None:
@@ -209,7 +214,7 @@ def run(model_name, scenario, input_samples):
       print("\n#-- Generating input samples --#")
       st = time.time()
       sampler = GSASampler(model_name, techmap_dir_path=TECHMAP_DIR_PATH, ts_dir_path=TS_DIR_PATH ,scenario = scenario)
-      input_samples = sampler.generate_morris_samples(run_date)
+      input_samples = sampler.generate_morris_samples(run_date,path)
       print(f"Sampling finished in {time.time()-st:.2f} seconds")
    else:
       sample_input = []
@@ -223,10 +228,10 @@ def run(model_name, scenario, input_samples):
    
    for i in range(len(input_samples)):
       # Build
-      print(f"\n#-- Run #{i+1} --#")
+      print(f"\n#-- Run {i+1}/{len(input_samples)} --#")
       print("\n#-- Building model started --#")
       st = time.time()
-      model_input = input_samples[0]
+      model_input = input_samples[i]
       model_instance = Model(model_input)
       print(f"Building model finished in {time.time()-st:.2f} seconds")
 
@@ -236,16 +241,11 @@ def run(model_name, scenario, input_samples):
       model_instance.solve()
       opt_status = model_instance.getStatus()
       print(f"Solving model finished in {time.time()-st:.2f} seconds")
-      
-      # Create a directory for the model if it does not exist
-      path = os.path.join(GSA_DIR_PATH, model_name+'-'+scenario+'-'+run_date)
-      if not os.path.exists(path):
-         os.mkdir(path)
 
       # Save
       print("\n#-- Saving model started --#")
       st = time.time()
-      model_instance.output_list_to_pkl(os.path.join(path, 'results_simulations.pkl'),opt_status)
+      model_instance.output_list_to_pkl(os.path.join(path, 'Y.pkl'),opt_status)
       
       print(f"Saving model finished in {time.time()-st:.2f} seconds")
 
