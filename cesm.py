@@ -19,6 +19,7 @@ from Core.model import Model
 from Core.datacls import save_input_output, read_input_output
 from Core.plotter import Plotter, PlotType
 from Core.gsasampler import GSASampler
+from Core.gsaanalyzer import GSAAnalyzer
 
 # Constants
 TECHMAP_DIR_PATH = Path(".").joinpath(os.getcwd(), 'Data', 'Techmap')
@@ -209,45 +210,50 @@ def run(model_name, scenario, input_samples):
       model_name = prompt(get_list_inquirer_choices(get_existing_models(), name='model_name', message='Please choose a model to run'))['model_name']
    if scenario is None:
       scenario = click.prompt('Please enter a scenario name', type=click.STRING)
-   if input_samples is None:
+       
+   for mode in ['morris', 'sobol']:
       """Generate Samples"""
+      print(f'\n#-- Starting {mode} method --#')
       print("\n#-- Generating input samples --#")
-      st = time.time()
       sampler = GSASampler(model_name, techmap_dir_path=TECHMAP_DIR_PATH, ts_dir_path=TS_DIR_PATH ,scenario = scenario)
-      input_samples = sampler.generate_morris_samples(run_date,path)
+      st = time.time()
+      if mode == 'sobol' or (mode == 'morris' and input_samples is None):
+         input_samples = sampler.generate_samples(run_date,path,mode)
+      else:
+         sample_input = []
+         with (open(f'GSASamples/{input_samples}', "rb")) as openfile:
+            while True:
+               try:
+                  sample_input.append(pickle.load(openfile))
+               except EOFError:
+                  break
+         input_samples = sample_input[0]
       print(f"Sampling finished in {time.time()-st:.2f} seconds")
-   else:
-      sample_input = []
-      with (open(f'GSASamples/{input_samples}', "rb")) as openfile:
-         while True:
-            try:
-               sample_input.append(pickle.load(openfile))
-            except EOFError:
-               break
-      input_samples = sample_input[0]
-   
-   for i in range(len(input_samples)):
-      # Build
-      print(f"\n#-- Run {i+1}/{len(input_samples)} --#")
-      print("\n#-- Building model started --#")
-      st = time.time()
-      model_input = input_samples[i]
-      model_instance = Model(model_input)
-      print(f"Building model finished in {time.time()-st:.2f} seconds")
+        
+      for i in range(len(input_samples)):
+         # Build
+         print(f"\n#-- Run {i+1}/{len(input_samples)} --#")
+         print("\n#-- Building model started --#")
+         st = time.time()
+         model_input = input_samples[i]
+         model_instance = Model(model_input)
+         print(f"Building model finished in {time.time()-st:.2f} seconds")  
 
-      # Solve
-      print("\n#-- Solving model started --#")
-      st = time.time()
-      model_instance.solve()
-      opt_status = model_instance.getStatus()
-      print(f"Solving model finished in {time.time()-st:.2f} seconds")
+         # Solve
+         print("\n#-- Solving model started --#")
+         st = time.time()
+         model_instance.solve()
+         opt_status = model_instance.getStatus()
+         print(f"Solving model finished in {time.time()-st:.2f} seconds") 
 
-      # Save
-      print("\n#-- Saving model started --#")
-      st = time.time()
-      model_instance.output_list_to_pkl(os.path.join(path, 'Y.pkl'),opt_status)
-      
-      print(f"Saving model finished in {time.time()-st:.2f} seconds")
+         # Save
+         print("\n#-- Saving model started --#")
+         st = time.time()
+         model_instance.output_list_to_pkl(os.path.join(path, f'{mode}_Y.pkl'),opt_status)
+            
+         print(f"Saving model finished in {time.time()-st:.2f} seconds")
+    
+      print(f'Run complete at {datetime.now().strftime("%d-%m-%y %H-%M")}')
 
 
 if __name__ == "__main__":
