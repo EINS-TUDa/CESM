@@ -54,7 +54,8 @@ Then you can open the documentation from *docs/build/html/index.html*.
 
 
 ## Citation
-If you use the OCGModel in your research, please cite the original paper:
+If you use this software in your research, please cite this repository.
+If you use the German energy transition model in your research, please cite the original paper:
 
     Barbosa, J.; Ripp, C.; Steinke, F. Accessible Modeling of the German Energy Transition: An Open, Compact, and Validated Model. Energies 2021, 14, 8084. https://doi.org/10.3390/en14238084
 
@@ -75,5 +76,5 @@ For Bibtex you can use the following:
 	}
 
 ## License
-The project is licensed under the Apache License - see the [LICENSE.md](LICENSE.md) file for details.
+The project is licensed under the MIT license - see the [LICENSE.md](LICENSE.md) file for details.
 
