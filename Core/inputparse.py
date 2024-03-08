@@ -9,10 +9,11 @@ from pathlib import Path
 import pandas as pd
 import numpy as np
 import scipy.interpolate
-import Core.datacls as dtcls
-from pydantic import ValidationError
+# import Core.datacls as dtcls
+from collections import namedtuple
+import sqlite3
 
-              
+
 
 class Parser:
     """
@@ -20,73 +21,58 @@ class Parser:
         Import techmap and timeseries
         Generates .dat input file
     """
-    def __init__(self, name, techmap_dir_path, ts_dir_path, scenario):
-        self.name = name
+    param_index_dict = {
+        "dt": [], 
+        "w": [],
+        "discount_rate": [],
+        "annual_co2_limit": ["Y"],
+        "co2_price" : ["Y"],
+        "opex_cost_energy": ["CS","Y"],
+        "opex_cost_power" :["CS","Y"],
+        "capex_cost_power":["CS","Y"], 
+        "efficiency": ["CS"],
+        "technical_lifetime": ["CS"],
+        "cap_min":["CS", "Y"],
+        "cap_max":["CS", "Y"],
+        "cap_res_min":["CS", "Y"],
+        "cap_res_max":["CS", "Y"],
+        "availability_profile": ["CS", "T"],
+        "technical_availability": ["CS"],
+        "output_profile": ["CS", "T"],
+        "max_eout":["CS","Y"],
+        "min_eout" :["CS","Y"],
+        "out_frac_min":["CS","Y"],
+        "out_frac_max":["CS","Y"],
+        "in_frac_min":["CS","Y"],
+        "in_frac_max":["CS","Y"],
+        "spec_co2": ["CS"],
+        "is_storage": ["CS"], 
+        "c_rate": ["CS"], 
+        "efficiency_charge": ["CS"]
+    }
+
+
+    def __init__(self, name, techmap_dir_path, ts_dir_path, db_dir_path, scenario):
         self.techmap_path = techmap_dir_path.joinpath(f"{name}.xlsx")
         self.ts_dir_path = ts_dir_path
-
+        db_path = db_dir_path.joinpath("db.sqlite")
         self.scenario = scenario
-        self.tss_name = None
-        
+
+        self.conn = sqlite3.connect(db_path)
+        self.cursor = self.conn.cursor()
+
+        # Read queries from the .sql file
+        with open(Path(".").joinpath("Core","db","init_queries.sql"), 'r') as file:
+            queries = file.read()
+
+        # Execute the queries
+        self.cursor.executescript(queries)
+
+        # Commit the transaction
+        self.conn.commit()
+
         self.units = None
-        self.datasets = {
-            "Y": None,
-            "T": None,
-            "CS": None,
-            "CP": None,
-            "CO": None
-        }
-        self.plot_settings={
-            "orders": dict(),
-            "colors": dict(),
-            }
 
-        # Add here if model is changed
-        self.param_index_dict = {
-            "dt": [], 
-            "w": [],
-            "discount_rate": [],
-            "annual_co2_limit": ["Y"],
-            "co2_price" : ["Y"],
-            "opex_cost_energy": ["CS","Y"],
-            "opex_cost_power" :["CS","Y"],
-            "capex_cost_power":["CS","Y"], 
-            "efficiency": ["CS"],
-            "technical_lifetime": ["CS"],
-            "cap_min":["CS", "Y"],
-            "cap_max":["CS", "Y"],
-            "cap_res_min":["CS", "Y"],
-            "cap_res_max":["CS", "Y"],
-            "availability_profile": ["CS", "T"],
-            "technical_availability": ["CS"],
-            "output_profile": ["CS", "T"],
-            "max_eout":["CS","Y"],
-            "min_eout" :["CS","Y"],
-            "out_frac_min":["CS","Y"],
-            "out_frac_max":["CS","Y"],
-            "in_frac_min":["CS","Y"],
-            "in_frac_max":["CS","Y"],
-            "spec_co2": ["CS"],
-            "is_storage": ["CS"], 
-            "c_rate": ["CS"], 
-            "efficiency_charge": ["CS"]
-        }
-
-        self.params = {name:None for name in self.param_index_dict.keys()}
-        
-
-    # @property
-    # def sim_folder(self):
-    #     if self.tss_name is None:
-    #         raise InputProcessingError("Time step selection must be done before building simulation folder")
-
-    #     sim_folder = os.sep.join([self.path_dir, "Runs", "%s_%s_%s"%(self.name, self.scenario, self.tss_name)])
-    #     if not os.path.exists(sim_folder):
-    #         os.makedirs(sim_folder)
-
-    #     return sim_folder
-
-    
     def parse(self):
         tmap = pd.ExcelFile(self.techmap_path)
         self.read_units(tmap)
@@ -95,148 +81,137 @@ class Parser:
         self.read_co(tmap)
         self.read_cp(tmap)
         self.read_cs(tmap)
-        self.read_plottingsettings(tmap)
 
     def read_units (self, tmap) -> None:
         df = pd.read_excel(tmap,"Units")
-        self.units = dtcls.Units(**dict(zip(df["quantity"].str.strip(),df["scale_factor"])))
-            
-    def read_cp(self,tmap) -> None:
-        df = pd.read_excel(tmap,"ConversionProcess")
-        self.datasets["CP"] = list(dict.fromkeys([dtcls.ConversionProcess(cp.strip()) for cp in df["conversion_process_name"] if not pd.isna(cp)]))
-        
-    def read_co(self, tmap) -> None:
-        df = pd.read_excel(tmap,"Commodity")
-        try:
-            self.datasets["CO"] = list(dict.fromkeys([dtcls.Commodity(co.strip()) for co in df["commodity_name"] if not pd.isna(co)]))
-        except ValidationError as e:
-            # Check which commodity is not defined
-            for co in df["commodity_name"].str.strip():
-                try:
-                    dtcls.Commodity(co)
-                except ValidationError as e:
-                    print(f"Error in commodity {co} definition")
-                    raise e
+        self.units = dict(zip(df["quantity"].str.strip(),df["scale_factor"]))
     
     def read_scenario(self, tmap):
         df = pd.read_excel(tmap,"Scenario")
-        
         row_index = df.index[df["scenario_name"]==self.scenario].tolist()[0]
         # Get years set
-
-        self.params["discount_rate"] = df["discount_rate"][row_index]
-        self.datasets["Y"] = [dtcls.Year(x) for x in 
+        years = [x for x in 
             range(
                 int(df["from_year"][row_index]),
                 int(df["until_year"][row_index])+1,
                 int(df["year_step"][row_index])
             )
         ]
+        for y in years:
+            self.cursor.execute("INSERT INTO year (value) VALUES (?);",(y,))
+
+        discount_rate = df["discount_rate"][row_index]
+        tss_name = df["TSS"][row_index]
+        self.cursor.execute("INSERT INTO param_global (discount, tss_name) VALUES (?, ?);",(discount_rate,tss_name))
+        self.conn.commit() # commit here because it is needed for inserting co2 params
         
-        self.tss_name = df["TSS"][row_index]
-        
-        co2_param = ["annual_co2_limit", "co2_price"]
-        for pp in co2_param:
+        params = {}
+        for pp in ["annual_co2_limit", "co2_price"]:
             v = df[pp][row_index]
-            self.params[pp] = {}
+            params[pp] = {}
             if not pd.isna(v):
-                if '[' in v:
+                if '[' in str(v):
                     int_fun = self.get_interpolation_f(v)
-                    for y in self.datasets["Y"]:
-                        val = int_fun(int(y))
+                    for y in years:
+                        val = int_fun(y)
                         if not np.isnan(val):
-                            self.params[pp][y] = int_fun(int(y))
+                            params[pp][y] = float(val) # val is a zero dimensional np array so float is needed
                 else:
-                    for y in self.datasets["Y"]:
-                        self.params[pp][dtcls.Year(y)] = v
+                    for y in years:
+                        params[pp][y] = float(v)
+        for y in years:
+            y_id = self.cursor.execute("SELECT id FROM year WHERE value =?",(y,)).fetchall()[0][0]
+            co2_price = params["co2_price"].get(y,None)
+            annual_co2_limit = params["annual_co2_limit"].get(y,None)
+            if co2_price is not None or annual_co2_limit is not None:
+                self.cursor.execute("INSERT INTO param_y (y_id, annual_co2_limit, co2_price) VALUES (?,?,?);",(y_id, annual_co2_limit, co2_price))
+        self.conn.commit()
+        
                    
     def read_tss(self,tmap):
+        tss_name = self.cursor.execute("SELECT tss_name FROM param_global").fetchall()[0][0]
         df = pd.read_excel(tmap,"TSS")
-        row_index = df.index[df["TSS_name"]==self.tss_name].tolist()[0]
+        row_index = df.index[df["TSS_name"]==tss_name].tolist()[0]
 
-        self.params["dt"] = df["dt"][row_index]
-        tss_file_path = self.ts_dir_path.joinpath(f"{self.tss_name}.txt")
+        dt = int(df["dt"][row_index])
+        
+        tss_file_path = self.ts_dir_path.joinpath(f"{tss_name}.txt")
 
-        tss_file = open(tss_file_path)
-        tss_array = tss_file.read().split("\n")
+        with open(tss_file_path) as tss_file:
+            tss_array = tss_file.read().split("\n")
         tss_values = [int(x) for x in tss_array if x != ""]
-        self.datasets["T"] = [dtcls.Time(ts) for ts in tss_values]
-        self.params["w"] = (8760/len(self.datasets["T"]))/self.params["dt"]
+        for ts in tss_values:
+            self.cursor.execute("INSERT INTO time_step (value) VALUES (?);",(ts,))
+        w = (8760/len(tss_values))/dt
+        self.cursor.execute("UPDATE param_global SET dt = ?, w = ? WHERE constant_column = 1;", (dt,w))
+        self.conn.commit()
+
+    def read_co(self, tmap) -> None:
+        df = pd.read_excel(tmap,"Commodity")
+        for _,row in df.iterrows():
+            if not pd.isna(row["commodity_name"]):
+                self.cursor.execute("INSERT INTO commodity (name,plot_order,plot_color) VALUES (?,?,?);",(row["commodity_name"].strip(),row["order"],row["color"]))
+        self.conn.commit()
+
+    def read_cp(self,tmap) -> None:
+        df = pd.read_excel(tmap,"ConversionProcess")
+        for _,row in df.iterrows():
+            if not pd.isna(row["conversion_process_name"]):
+                self.cursor.execute("INSERT INTO conversion_process (name, plot_order, plot_color) VALUES (?,?,?);",(row["conversion_process_name"].strip(),row["order"],row["color"]))
+        self.conn.commit()
         
     def read_cs(self, tmap):
         df = pd.read_excel(tmap,"ConversionSubProcess",  skiprows=[1, 2])
         
         # TO DO - verify the scenario of the conversion process
-        self.datasets["CS"] = []
         param_names= df.columns[df.columns.to_list().index("scenario")+1:].to_list()
-        for p_name in param_names:
-            self.params[p_name] = {}
         for _, row in df.iterrows():
-            cp = row["conversion_process_name"]
-            if not pd.isna(cp):
-                cin = row["commodity_in"]
-                cout = row["commodity_out"]
-                try:
-                    cs = dtcls.ConversionSubprocess(dtcls.ConversionProcess(cp),dtcls.Commodity(cin),dtcls.Commodity(cout))
-                except  ValidationError as e :
-                    print(f'Error in conversion subprocess {cp} definition')
-                    raise e
-
-                self.datasets["CS"].append(cs)
+            if not pd.isna(row["conversion_process_name"]):
+                cin_id = self.cursor.execute("SELECT id FROM commodity WHERE name =?",(row["commodity_in"],)).fetchall()[0][0]
+                cout_id = self.cursor.execute("SELECT id FROM commodity WHERE name =?",(row["commodity_out"],)).fetchall()[0][0]
+                cp_id = self.cursor.execute("SELECT id FROM conversion_process WHERE name =?",(row["conversion_process_name"],)).fetchall()[0][0]
+                self.cursor.execute("INSERT INTO conversion_subprocess (cp_id, cin_id, cout_id) VALUES (?,?,?);",(cp_id,cin_id,cout_id))
+                self.conn.commit()
+                cs_id = self.cursor.lastrowid
+                # self.datasets["CS"].append(cs)
                 for p_name in param_names:
                     p = row[p_name]
                     if not pd.isna(p):
-                        if "T" not in self.param_index_dict[p_name]: # not time dependent
-                            if "Y" in self.param_index_dict[p_name]:
+                        if "T" not in Parser.param_index_dict[p_name]: # not time dependent
+                            if "Y" in Parser.param_index_dict[p_name]:
+                                years = self.cursor.execute("SELECT id,value FROM year").fetchall()
                                 #see if interval
                                 if '[' in str(p): # inveterval given
                                     f_int = self.get_interpolation_f(p)
-                                    for y in self.datasets["Y"]:
-                                        key = (cs , y)
-                                        val = f_int(int(y))
+                                    for y_id,y in years:
+                                        val = f_int(y)
                                         if not np.isnan(val):                                        
-                                            self.params[p_name][key] = float(f_int(int(y)))
+                                            val = float(f_int(y))
+                                            self.cursor.execute(f"INSERT OR REPLACE INTO param_cs_y (cs_id, y_id, {p_name}) VALUES (?,?,?);",(cs_id,y_id,val))
                                 else: # no interval given - constant
-                                    for y in self.datasets["Y"]:
-                                        key = (cs , y) 
-                                        self.params[p_name][key] = p
+                                    for y_id,y in years:
+                                        self.cursor.execute(f"INSERT OR REPLACE INTO param_cs_y (cs_id, y_id, {p_name}) VALUES (?,?,?);",(cs_id,y_id,p))
                             else: # not dependent on the year
-                                key = cs
-                                self.params[p_name][key] = p
+                                self.cursor.execute(f"INSERT OR REPLACE INTO param_cs (cs_id, {p_name}) VALUES (?,?);",(cs_id,p))
                         else: # time dependent
                             ts_file_path = self.ts_dir_path.joinpath(f"{p}.txt")
-                            ts_file = open(ts_file_path)
-                            ts = ts_file.read().split(" ")
-                            ts = [float(x) for x in ts if x != ""]
-                            ts.insert(0,0) # add to match index
-                            ts = np.array(ts)
-                            ts = ts[[int(x) for x in self.datasets["T"]]]
-                            
+                            tss = self.cursor.execute("SELECT id,value FROM time_step").fetchall()
+                            Row = namedtuple("Row", ["id", "value"])
+                            tss = [Row(*row) for row in tss]
+                            with open(ts_file_path) as ts_file:
+                                ts = ts_file.read().split(" ")
+                                ts = [float(x) for x in ts if x != ""]
+                                ts.insert(0,0) # add to match index
+                                ts = np.array(ts)
+                                ts = ts[[x.value for x in tss]]
+                                     
                             #Potentential normalization
                             if p_name in ["output_profile"]:
                                 ts = ts/sum(ts)
-                            for i,t in enumerate(self.datasets["T"]):
-                                key = (cs,t)
-                                self.params[p_name][key] = ts[i]
-
-    def read_plottingsettings(self, tmap):
-        
-        # Commodities
-        sheets = {"Commodity": "commodity_name",
-                   "ConversionProcess": "conversion_process_name"}
-
-        for sheet,col_name in sheets.items():
-            df = pd.read_excel(tmap,sheet)
-            cols = df.columns
-            name_i, color_i, order_i = cols.get_loc(col_name), cols.get_loc("color"), cols.get_loc("order")
-            for _, row in df.iterrows():
-                name = row.iloc[name_i]
-                if not pd.isna(name):
-                    if not  pd.isna(row.iloc[color_i]):
-                        self.plot_settings["colors"][name] = row.iloc[color_i]
-                    if not pd.isna(row.iloc[order_i]):
-                        self.plot_settings["orders"][name] = row.iloc[order_i] if not pd.isna(row.iloc[order_i]) else None
-            
+                            # insert to database
+                            for i,time_step in enumerate(tss):
+                                self.cursor.execute(f"INSERT OR REPLACE INTO param_cs_t (cs_id, t_id, {p_name}) VALUES (?,?,?);",(cs_id,time_step.id,ts[i]))
+        self.conn.commit()
 
     def get_interpolation_f(self, param):
         """
@@ -273,93 +248,19 @@ class Parser:
         else:
             f = lambda x: vals[0] if x == yy[0] else np.nan  
         return f
-    
-    def get_input(self) -> dtcls.Input:
-
-        global_param = dtcls.GlobalParam(dt = self.params['dt'], w = self.params['w'], discount_rate=self.params['discount_rate'])
-
-        cost_param = dtcls.CostParam(
-            opex_cost_energy = self.params['opex_cost_energy'],
-            opex_cost_power = self.params['opex_cost_power'],
-            capex_cost_power = self.params['capex_cost_power']
-        )
-
-        co2_param = dtcls.CO2Param(
-            spec_co2 = self.params['spec_co2'],
-            annual_co2_limit = self.params['annual_co2_limit'],
-            co2_price = self.params['co2_price']
-        )
-
-        energy_param = dtcls.EnergyParam(
-            max_eout = self.params['max_eout'],
-            min_eout = self.params['min_eout']
-        )
-
-        capacity_param = dtcls.CapacityParam(
-            cap_min = self.params['cap_min'],
-            cap_max = self.params['cap_max'], 
-            cap_res_min = self.params['cap_res_min'],
-            cap_res_max = self.params['cap_res_max'] 
-        )
-
-        technology_param = dtcls.TechnologyParam(
-            efficiency = self.params['efficiency'],
-            technical_lifetime = self.params['technical_lifetime']
-        )
-
-        availability_param = dtcls.AvailabilityParam(
-            availability_profile= self.params['availability_profile'],
-            technical_availability = self.params['technical_availability'],
-            output_profile = self.params['output_profile']
-        )
-
-        fraction_param = dtcls.FractionParam(
-            out_frac_min=self.params['out_frac_min'],
-            out_frac_max=self.params['out_frac_max'],
-            in_frac_min=self.params['in_frac_min'],
-            in_frac_max=self.params['in_frac_max']
-        )
-
-
-        storage_param = dtcls.StorageParam(
-            c_rate = self.params['c_rate'],
-            efficiency_charge = self.params['efficiency_charge']
-        )
-
-        param = dtcls.Param(
-            globalparam = global_param,
-            cost = cost_param,
-            co2 = co2_param,
-            energy = energy_param,
-            capacity = capacity_param,
-            technology = technology_param,
-            availability = availability_param,
-            fractions = fraction_param,
-            storage = storage_param,
-            units = self.units
-        )
-
-        dataset = dtcls.Dataset(
-            years = self.datasets["Y"],
-            times = self.datasets["T"],
-            commodities = self.datasets["CO"],
-            conversion_processes = self.datasets["CP"],
-            conversion_subprocesses= self.datasets["CS"],
-            storage_cs = [cs for cs in self.params['is_storage'] if self.params['is_storage'][cs]]
-        )
-
-        plot_settings = dtcls.PlotSettings(
-            orders = self.plot_settings["orders"],
-            colors = self.plot_settings["colors"]
-        )
-
-        input = dtcls.Input(dataset=dataset, param=param, plot_settings=plot_settings)
-        return input
 
 
 if __name__ == '__main__':
     techmap_dir_path = Path(".").joinpath("Data", "Techmap")
     ts_dir_path = Path(".").joinpath("Data", "TimeSeries")
-    parser = Parser("DEModel",techmap_dir_path=techmap_dir_path, ts_dir_path=ts_dir_path ,scenario = "Base4twk")
+    db_dir_path = Path(".").joinpath("Runs", "DEModel_V2-Base4twk")
+    file_path = Path(".").joinpath("Runs", "DEModel_V2-Base4twk", "db.sqlite")
+    if file_path.exists():
+        # Delete the file using unlink()
+        file_path.unlink()
+        print("File deleted successfully:", file_path)
+    else:
+        print("File does not exist:", file_path)
+    parser = Parser("DEModel_V2",techmap_dir_path=techmap_dir_path, ts_dir_path=ts_dir_path ,db_dir_path=db_dir_path ,scenario = "Base4twk")
     parser.parse()
-    parser.get_input()
+    # parser.get_input()

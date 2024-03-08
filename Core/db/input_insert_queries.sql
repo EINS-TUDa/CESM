@@ -12,7 +12,7 @@ INSERT INTO conversion_subprocess (name, cp, cin, cout)
             (SELECT id FROM commodity WHERE name = ?))
 
 
-INSERT INTO param_global (dt, discount) VALUES (?, ?);
+INSERT INTO param_global (dt, discount, tss_name) VALUES (?, ?, ?);
 
 INSERT INTO param_cs (spec_co2, efficiency, technology_lifetime, technical_availability, c_rate, efficiency_charge, cs) 
     VALUES (?, ?, ?, ?, ?, ?, (SELECT id FROM conversion_process WHERE name = ?));
@@ -25,4 +25,3 @@ INSERT INTO param_cs_y (opex_cost_energy, opex_cost_power, capex_cost_power, max
 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 
         (SELECT id FROM conversion_subprocess WHERE name = ?), 
         (SELECT id FROM year WHERE value = ?));
-

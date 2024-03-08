@@ -1,18 +1,14 @@
 -- Create the 'time' table
-CREATE TABLE IF NOT EXISTS time (
+CREATE TABLE IF NOT EXISTS time_step (
     id INTEGER PRIMARY KEY,
-    order INTEGER,
-    value INTEGER
-    CONSTRAINT value_unique UNIQUE (value),
-    CONSTRAINT order_unique UNIQUE (order)
+    value INTEGER,
+    CONSTRAINT value_unique UNIQUE (value)
 );
 
 -- Create the 'year' table
 CREATE TABLE IF NOT EXISTS year (
     id INTEGER PRIMARY KEY,
-    order INTEGER,
     value INTEGER,
-    CONSTRAINT order_unique UNIQUE (order),
     CONSTRAINT value_unique UNIQUE (value)
 );
 
@@ -20,6 +16,8 @@ CREATE TABLE IF NOT EXISTS year (
 CREATE TABLE IF NOT EXISTS commodity (
     id INTEGER PRIMARY KEY,
     name TEXT,
+    plot_color TEXT,
+    plot_order INTEGER,
     CONSTRAINT name_unique UNIQUE (name)
 );
 
@@ -27,28 +25,45 @@ CREATE TABLE IF NOT EXISTS commodity (
 CREATE TABLE IF NOT EXISTS conversion_process (
     id INTEGER PRIMARY KEY,
     name TEXT,
+    plot_color TEXT,
+    plot_order INTEGER,
     CONSTRAINT name_unique UNIQUE (name)
 );
 
 -- Create the 'conversion_subprocess' table
 CREATE TABLE IF NOT EXISTS conversion_subprocess (
     id INTEGER PRIMARY KEY,
-    name TEXT,
-    cp INTEGER,
-    cin INTEGER,
-    cout INTEGER,
-    FOREIGN KEY (cp) REFERENCES cp(id),
-    FOREIGN KEY (cin) REFERENCES commodity(id),
-    FOREIGN KEY (cout) REFERENCES commodity(id),
-    CONSTRAINT name_unique UNIQUE (name),
-    CONSTRAINT cs_unique UNIQUE (cp,cin,cout)
+    cp_id INTEGER,
+    cin_id INTEGER,
+    cout_id INTEGER,
+    FOREIGN KEY (cp_id) REFERENCES conversion_process(id),
+    FOREIGN KEY (cin_id) REFERENCES commodity(id),
+    FOREIGN KEY (cout_id) REFERENCES commodity(id),
+    CONSTRAINT cs_unique UNIQUE (cp_id,cin_id,cout_id)
 );
+
+-- Create the 'unit' table
+CREATE TABLE IF NOT EXISTS unit (
+    id INTEGER PRIMARY KEY,
+    power FLOAT,
+    energy FLOAT,
+    co2_emissions FLOAT,
+    cost_energy FLOAT,
+    cost_power FLOAT,
+    co2_spec FLOAT,
+    -- Add a column that holds a constant value
+    constant_column INTEGER DEFAULT 1,
+    CONSTRAINT only_one_row UNIQUE (constant_column)
+);
+
 
 -- Create the 'param' table
 CREATE TABLE IF NOT EXISTS param_global (
     id INTEGER PRIMARY KEY,
     dt FLOAT,
+    w FLOAT,
     discount FLOAT,
+    tss_name text,
     -- Add a column that holds a constant value
     constant_column INTEGER DEFAULT 1,
     CONSTRAINT only_one_row UNIQUE (constant_column)
@@ -59,13 +74,13 @@ CREATE TABLE IF NOT EXISTS param_cs (
     id INTEGER PRIMARY KEY,
     spec_co2 FLOAT,
     efficiency FLOAT,
-    technology_lifetime FLOAT,
+    technical_lifetime FLOAT,
     technical_availability FLOAT,
     c_rate FLOAT,
     efficiency_charge FLOAT,
-    cs INTEGER,
-    FOREIGN KEY (cs) REFERENCES conversion_process(id),
-    CONSTRAINT cs_unique UNIQUE (cs)
+    cs_id INTEGER,
+    FOREIGN KEY (cs_id) REFERENCES conversion_process(id),
+    CONSTRAINT cs_unique UNIQUE (cs_id)
 );
 
 -- Create the 'param_y' table
@@ -73,9 +88,9 @@ CREATE TABLE IF NOT EXISTS param_y (
     id INTEGER PRIMARY KEY,
     annual_co2_limit FLOAT,
     co2_price FLOAT,
-    y INTEGER,
-    FOREIGN KEY (y) REFERENCES year(id),
-    CONSTRAINT y_unique UNIQUE (y)
+    y_id INTEGER,
+    FOREIGN KEY (y_id) REFERENCES year(id),
+    CONSTRAINT y_unique UNIQUE (y_id)
 );
 
 -- Create the 'param_cs_y' table
@@ -94,11 +109,11 @@ CREATE TABLE IF NOT EXISTS param_cs_y (
     out_frac_max FLOAT,
     in_frac_min FLOAT,
     in_frac_max FLOAT,
-    cs INTEGER,
-    y INTEGER,
-    FOREIGN KEY (cs) REFERENCES conversion_subprocess(id),
-    FOREIGN KEY (y) REFERENCES year(id),
-    CONSTRAINT cs_y_unique UNIQUE (cs, y)
+    cs_id INTEGER,
+    y_id INTEGER,
+    FOREIGN KEY (cs_id) REFERENCES conversion_subprocess(id),
+    FOREIGN KEY (y_id) REFERENCES year(id),
+    CONSTRAINT cs_y_unique UNIQUE (cs_id, y_id)
 );
 
 -- Create the 'param_cs_t' table
@@ -106,11 +121,11 @@ CREATE TABLE IF NOT EXISTS param_cs_t (
     id INTEGER PRIMARY KEY,
     availability_profile FLOAT,
     output_profile FLOAT,
-    cs INTEGER,
-    t INTEGER,
-    FOREIGN KEY (cs) REFERENCES cp(id),
-    FOREIGN KEY (t) REFERENCES time(id),
-    CONSTRAINT cs_t_unique UNIQUE (cs, t)
+    cs_id INTEGER,
+    t_id INTEGER,
+    FOREIGN KEY (cs_id) REFERENCES cp(id),
+    FOREIGN KEY (t_id) REFERENCES time(id),
+    CONSTRAINT cs_t_unique UNIQUE (cs_id, t_id)
 );
 
 
