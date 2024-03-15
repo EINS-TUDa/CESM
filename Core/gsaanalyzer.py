@@ -51,7 +51,8 @@ class GSAAnalyzer:
             feasible_Y = feasible_Y[:-1]
             feasible_X = feasible_X[:-1]
         
-        df = pd.DataFrame(columns=self.param_names)
+        df_mu_star = pd.DataFrame(columns=self.param_names)
+        df_mu = pd.DataFrame(columns=self.param_names)
 
         # Run the Morris analysis for each of the output vars
         for i in range(feasible_Y.shape[1]):
@@ -60,12 +61,14 @@ class GSAAnalyzer:
             # and sigma is useful for interactions, which will be better assessed
             # in the Sobol method. Here we just need mu_star
             if np.max(Si['mu_star']) == 0:
-                df.loc[self.var_names[i]] = list(Si['mu_star'])
+                df_mu_star.loc[self.var_names[i]] = list(Si['mu_star'])
             else:
-                df.loc[self.var_names[i]] = list(Si['mu_star'] / np.max(Si['mu_star']))
+                df_mu_star.loc[self.var_names[i]] = list(Si['mu_star'] / np.max(Si['mu_star']))
+            df_mu.loc[self.var_names[i]] = list(Si['mu'])
         
         # Save the full results as a dataframe
-        self.write_pkl(f'{self.path}/morris_results.pkl', df)
+        self.write_pkl(f'{self.path}/morris_mu_star.pkl', df_mu_star)
+        self.write_pkl(f'{self.path}/morris_mu.pkl', df_mu)
 
         # Set the number of relevant parameters to be selected as 25% of the total
         sel_num = int(len(self.param_names)*0.25)
@@ -73,20 +76,20 @@ class GSAAnalyzer:
         cols_to_drop = []
         frequent_contributors = []
         # Filter all rows with only low contributions (the output var is not really influenced by any param)
-        for i in range(len(df)):
-            if np.max(df.iloc[i]) < 0.5:
+        for i in range(len(df_mu_star)):
+            if np.max(df_mu_star.iloc[i]) < 0.5:
                 rows_to_drop.append(self.var_names[i])
                 continue
             # Select the params with the biggest contribution for each output var
-            top_contributions = df.iloc[i].sort_values(ascending=False).head(sel_num)
+            top_contributions = df_mu_star.iloc[i].sort_values(ascending=False).head(sel_num)
             frequent_contributors.append(list(top_contributions.index))
         # Filter all columns with only low contributions (the input param doesn't have big influences over any output var)
-        for j in range(df.shape[1]):
-            if np.max(df.iloc[:,j]) < 0.5:
+        for j in range(df_mu_star.shape[1]):
+            if np.max(df_mu_star.iloc[:,j]) < 0.5:
                 cols_to_drop.append(self.param_names[j])
         # Drop selected rows and columns
-        df = df.drop(rows_to_drop)
-        df = df.drop(cols_to_drop,axis=1)
+        df_mu_star = df_mu_star.drop(rows_to_drop)
+        df_mu_star = df_mu_star.drop(cols_to_drop,axis=1)
         
         # Flatten the biggest contributors list and select the most frequent ones (input params that appears the most as influential)
         flat_contributors = [item for sublist in frequent_contributors for item in sublist]
@@ -94,7 +97,7 @@ class GSAAnalyzer:
         top_contributors = [value for value, count in counts.most_common(sel_num)]
         
         # Sum each column and select the ones with the higher total contribution (input params that influence more output vars)
-        total_contribution = df.sum(axis=0)
+        total_contribution = df_mu_star.sum(axis=0)
         top_individual_contributions = list(total_contribution.sort_values(ascending=False).head(sel_num).index)
         
         # Create a set for both lists
