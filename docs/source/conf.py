@@ -44,3 +44,4 @@ exclude_patterns = []
 # html_theme = 'alabaster'
 html_theme = 'sphinx_book_theme'
 html_static_path = ['_static']
+html_logo = "_static/logo.svg"

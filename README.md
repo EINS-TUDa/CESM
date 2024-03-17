@@ -1,3 +1,7 @@
+<div style="text-align:center;">
+  <img src="images/logo.svg" width="250" height="200" alt="Logo">
+</div>
+
 # Compact Energy System Modeling Tool (CESM)
 This is a compact energy system modeling tool that can model different forms of energy carriers and the conversion processes that convert them to each other. 
 The optimal output of the model determines how much should be invested in each part of the energy system to meet the energy demand and minimize costs.
