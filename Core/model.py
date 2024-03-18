@@ -340,6 +340,7 @@ class Model():
                 vars["Eintime"][cs,y,t] <= in_frac_max * vars["Enetcons"][cs[1],y,t] # cs[1] is cin
                 for t in get_set("time")
                 for (cs,y,in_frac_max) in iter_param("in_frac_max")
+            ),
             name = "max_couse"
         )
 
