@@ -79,7 +79,7 @@ CREATE TABLE IF NOT EXISTS param_cs (
     c_rate FLOAT,
     efficiency_charge FLOAT,
     cs_id INTEGER,
-    FOREIGN KEY (cs_id) REFERENCES conversion_process(id),
+    FOREIGN KEY (cs_id) REFERENCES conversion_subprocess(id),
     CONSTRAINT cs_unique UNIQUE (cs_id)
 );
 
@@ -123,9 +123,58 @@ CREATE TABLE IF NOT EXISTS param_cs_t (
     output_profile FLOAT,
     cs_id INTEGER,
     t_id INTEGER,
-    FOREIGN KEY (cs_id) REFERENCES cp(id),
+    FOREIGN KEY (cs_id) REFERENCES conversion_subprocess(id),
     FOREIGN KEY (t_id) REFERENCES time(id),
     CONSTRAINT cs_t_unique UNIQUE (cs_id, t_id)
 );
 
+-- Output tables
+
+-- Create the 'output_global' table
+CREATE TABLE IF NOT EXISTS output_global (
+    id INTEGER PRIMARY KEY,
+    OPEX FLOAT,
+    CAPEX FLOAT,
+    TOTEX FLOAT,
+    -- Add a column that holds a constant value
+    constant_column INTEGER DEFAULT 1,
+    CONSTRAINT only_one_row UNIQUE (constant_column)
+);
+
+-- Create the 'output_cs_y' table
+CREATE TABLE IF NOT EXISTS output_cs (
+    id INTEGER PRIMARY KEY,
+    value FLOAT,
+    cs_id INTEGER,
+    y_id INTEGER,
+    FOREIGN KEY (cs_id) REFERENCES conversion_subprocess(id),
+    FOREIGN KEY (y_id) REFERENCES year(id),
+    CONSTRAINT cs_y_unique UNIQUE (cs_id, y_id)
+);
+
+-- Create the 'output_cs_y_t' table
+CREATE TABLE IF NOT EXISTS output_cs_t (
+    id INTEGER PRIMARY KEY,
+    value FLOAT,
+    cs_id INTEGER,
+    y_id INTEGER,
+    t_id INTEGER,
+    FOREIGN KEY (cs_id) REFERENCES conversion_subprocess(id),
+    FOREIGN KEY (y_id) REFERENCES year(id),
+    FOREIGN KEY (t_id) REFERENCES time(id),
+    CONSTRAINT cs_y_t_unique UNIQUE (cs_id, y_id, t_id)
+);
+
+-- Create the 'output_co_y_t' table
+CREATE TABLE IF NOT EXISTS output_co_y_t (
+    id INTEGER PRIMARY KEY,
+    value FLOAT,
+    co_id INTEGER,
+    y_id INTEGER,
+    t_id INTEGER,
+    FOREIGN KEY (co_id) REFERENCES commodity(id),
+    FOREIGN KEY (y_id) REFERENCES year(id),
+    FOREIGN KEY (t_id) REFERENCES time(id),
+    CONSTRAINT co_y_t_unique UNIQUE (co_id, y_id, t_id)
+);
 
