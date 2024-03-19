@@ -73,13 +73,13 @@ CREATE TABLE IF NOT EXISTS param_global (
 -- Create the 'param_cs' table
 CREATE TABLE IF NOT EXISTS param_cs (
     id INTEGER PRIMARY KEY,
+    cs_id INTEGER,
     spec_co2 FLOAT,
     efficiency FLOAT,
     technical_lifetime FLOAT,
     technical_availability FLOAT,
     c_rate FLOAT,
     efficiency_charge FLOAT,
-    cs_id INTEGER,
     is_storage BOOLEAN,
     FOREIGN KEY (cs_id) REFERENCES conversion_subprocess(id),
     CONSTRAINT cs_unique UNIQUE (cs_id)
@@ -88,9 +88,9 @@ CREATE TABLE IF NOT EXISTS param_cs (
 -- Create the 'param_y' table
 CREATE TABLE IF NOT EXISTS param_y (
     id INTEGER PRIMARY KEY,
+    y_id INTEGER,
     annual_co2_limit FLOAT,
     co2_price FLOAT,
-    y_id INTEGER,
     FOREIGN KEY (y_id) REFERENCES year(id),
     CONSTRAINT y_unique UNIQUE (y_id)
 );
@@ -98,6 +98,8 @@ CREATE TABLE IF NOT EXISTS param_y (
 -- Create the 'param_cs_y' table
 CREATE TABLE IF NOT EXISTS param_cs_y (
     id INTEGER PRIMARY KEY,
+    cs_id INTEGER,
+    y_id INTEGER,
     opex_cost_energy FLOAT,
     opex_cost_power FLOAT,
     capex_cost_power FLOAT,
@@ -111,8 +113,6 @@ CREATE TABLE IF NOT EXISTS param_cs_y (
     out_frac_max FLOAT,
     in_frac_min FLOAT,
     in_frac_max FLOAT,
-    cs_id INTEGER,
-    y_id INTEGER,
     FOREIGN KEY (cs_id) REFERENCES conversion_subprocess(id),
     FOREIGN KEY (y_id) REFERENCES year(id),
     CONSTRAINT cs_y_unique UNIQUE (cs_id, y_id)
@@ -121,10 +121,10 @@ CREATE TABLE IF NOT EXISTS param_cs_y (
 -- Create the 'param_cs_t' table
 CREATE TABLE IF NOT EXISTS param_cs_t (
     id INTEGER PRIMARY KEY,
-    availability_profile FLOAT,
-    output_profile FLOAT,
     cs_id INTEGER,
     t_id INTEGER,
+    availability_profile FLOAT,
+    output_profile FLOAT,
     FOREIGN KEY (cs_id) REFERENCES conversion_subprocess(id),
     FOREIGN KEY (t_id) REFERENCES time(id),
     CONSTRAINT cs_t_unique UNIQUE (cs_id, t_id)
@@ -147,8 +147,8 @@ CREATE TABLE IF NOT EXISTS output_global (
 -- Create the 'output_y' table
 CREATE TABLE IF NOT EXISTS output_y (
     id INTEGER PRIMARY KEY,
-    total_annual_co2_emission FLOAT,
     y_id INTEGER,
+    total_annual_co2_emission FLOAT,
     FOREIGN KEY (y_id) REFERENCES year(id),
     CONSTRAINT y_unique UNIQUE (y_id)
 );
@@ -190,11 +190,11 @@ CREATE TABLE IF NOT EXISTS output_cs_y_t (
 -- Create the 'output_co_y_t' table
 CREATE TABLE IF NOT EXISTS output_co_y_t (
     id INTEGER PRIMARY KEY,
-    enetgen FLOAT,
-    enetcons FLOAT,
     co_id INTEGER,
     y_id INTEGER,
     t_id INTEGER,
+    enetgen FLOAT,
+    enetcons FLOAT,
     FOREIGN KEY (co_id) REFERENCES commodity(id),
     FOREIGN KEY (y_id) REFERENCES year(id),
     FOREIGN KEY (t_id) REFERENCES time(id),
