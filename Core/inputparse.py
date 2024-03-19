@@ -230,12 +230,21 @@ class Parser:
                                         val = f_int(y)
                                         if not np.isnan(val):                                        
                                             val = float(f_int(y))
-                                            self.cursor.execute(f"INSERT OR REPLACE INTO param_cs_y (cs_id, y_id, {p_name}) VALUES (?,?,?);",(cs_id,y_id,self._scale(p_name,val)))
+                                            try:
+                                                self.cursor.execute(f"INSERT INTO param_cs_y (cs_id, y_id, {p_name}) VALUES (?,?,?);",(cs_id,y_id,self._scale(p_name,val)))
+                                            except:
+                                                self.cursor.execute(f"UPDATE param_cs_y SET {p_name} = ? WHERE cs_id = ? AND y_id = ?;",(self._scale(p_name,val),cs_id,y_id))
                                 else: # no interval given - constant
                                     for y_id,y in years:
-                                        self.cursor.execute(f"INSERT OR REPLACE INTO param_cs_y (cs_id, y_id, {p_name}) VALUES (?,?,?);",(cs_id,y_id,self._scale(p_name,p)))
+                                        try:
+                                            self.cursor.execute(f"INSERT INTO param_cs_y (cs_id, y_id, {p_name}) VALUES (?,?,?);",(cs_id,y_id,self._scale(p_name,p)))
+                                        except:
+                                            self.cursor.execute(f"UPDATE param_cs_y SET {p_name} = ? WHERE cs_id = ? AND y_id = ?;",(self._scale(p_name,p),cs_id,y_id))
                             else: # not dependent on the year
-                                self.cursor.execute(f"INSERT OR REPLACE INTO param_cs (cs_id, {p_name}) VALUES (?,?);",(cs_id,self._scale(p_name,p)))
+                                try:
+                                    self.cursor.execute(f"INSERT INTO param_cs (cs_id, {p_name}) VALUES (?,?);",(cs_id,self._scale(p_name,p)))
+                                except:
+                                    self.cursor.execute(f"UPDATE param_cs SET {p_name} = ? WHERE cs_id = ?;",(self._scale(p_name,p),cs_id))
                         else: # time dependent
                             ts_file_path = self.ts_dir_path.joinpath(f"{p}.txt")
                             tss = self.cursor.execute("SELECT id,value FROM time_step").fetchall()
@@ -253,7 +262,10 @@ class Parser:
                                 ts = ts/sum(ts)
                             # insert to database
                             for i,time_step in enumerate(tss):
-                                self.cursor.execute(f"INSERT OR REPLACE INTO param_cs_t (cs_id, t_id, {p_name}) VALUES (?,?,?);",(cs_id,time_step.id,self._scale(p_name,ts[i])))
+                                try:
+                                    self.cursor.execute(f"INSERT INTO param_cs_t (cs_id, t_id, {p_name}) VALUES (?,?,?);",(cs_id,time_step.id,self._scale(p_name,ts[i])))
+                                except:
+                                    self.cursor.execute(f"UPDATE param_cs_t {p_name} = ? WHERE cs_id=? AND t_id=?;",(self._scale(p_name,ts[i]),cs_id,time_step.id,))
         self.conn.commit()
 
     def get_interpolation_f(self, param):
