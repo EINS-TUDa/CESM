@@ -11,6 +11,7 @@ from gurobipy import GRB
 from Core.inputparse import Parser
 from sqlite3 import Connection
 from typing import NamedTuple
+import pandas as pd
 
 class _CS(NamedTuple):
     cp: str
@@ -21,11 +22,12 @@ class Model():
     def __init__(self, conn: Connection) -> None:
         self.model = gp.Model("DEModel")
         self.conn = conn
+        self.cursor = conn.cursor()
         self._add_var()
         self._add_constr()
         
     def _iter_param(self, param_name):
-        conn = self.conn
+        cursor = self.cursor
         match Parser.param_index_dict[param_name]:
             case ["CS"]:
                 query = f"""
@@ -37,15 +39,15 @@ class Model():
                 JOIN commodity AS cout ON cs.cout_id = cout.id
                 WHERE pc.{param_name} IS NOT NULL;
                 """
-                return [(_CS(*x[1:]),x[0]) for x in conn.execute(query).fetchall()]
+                return [(_CS(*x[1:]),x[0]) for x in cursor.execute(query).fetchall()]
             case ["Y"]:
                 query = f"""
                 SELECT py.{param_name}, y.value
                 FROM param_y AS py
                 JOIN year AS y ON py.y_id = y.id
-                WHERE pc.{param_name} IS NOT NULL;
+                WHERE py.{param_name} IS NOT NULL;
                 """
-                return [(x[1],x[0]) for x in conn.execute(query).fetchall()]
+                return [(x[1],x[0]) for x in cursor.execute(query).fetchall()]
             case ["CS","Y"]:
                 query = f"""
                 SELECT pcy.{param_name}, cp.name AS cp, cin.name AS cin, cout.name AS cout, y.value
@@ -57,7 +59,7 @@ class Model():
                 JOIN year AS y ON pcy.y_id = y.id
                 WHERE pcy.{param_name} IS NOT NULL;
                 """
-                return [(_CS(*x[1:4]),x[4],x[0]) for x in conn.execute(query).fetchall()]
+                return [(_CS(*x[1:4]),x[4],x[0]) for x in cursor.execute(query).fetchall()]
             case ["CS","T"]:
                 query = f"""
                 SELECT pct.{param_name}, cp.name AS cp, cin.name AS cin, cout.name AS cout, ts.value
@@ -69,13 +71,13 @@ class Model():
                 JOIN time_step AS ts ON pct.t_id = ts.id
                 WHERE pct.{param_name} IS NOT NULL;
                 """
-                return [(_CS(*x[1:4]),x[4],x[0]) for x in conn.execute(query).fetchall()]
+                return [(_CS(*x[1:4]),x[4],x[0]) for x in cursor.execute(query).fetchall()]
 
     def _get_param(self, param_name, *indices):
-        conn = self.conn # defined for readability
+        cursor = self.cursor # defined for readability
         match Parser.param_index_dict[param_name]:
             case []:
-                return conn.execute(f"SELECT {param_name} FROM param_global;").fetchone()[0]
+                x = cursor.execute(f"SELECT {param_name} FROM param_global;").fetchone()
             case ["CS"]:
                 cs = indices[0]
                 query = f"""
@@ -85,18 +87,18 @@ class Model():
                 JOIN conversion_process AS cp ON cs.cp_id = cp.id
                 JOIN commodity AS cin ON cs.cin_id = cin.id
                 JOIN commodity AS cout ON cs.cout_id = cout.id
-                WHERE pc.{param_name} IS NOT NULL AND cs.name ={cs.cp} AND cin.name ={cs.cin} AND cout.name ={cs.cout};
+                WHERE pc.{param_name} IS NOT NULL AND cp.name ='{cs.cp}' AND cin.name ='{cs.cin}' AND cout.name ='{cs.cout}';
                 """
-                return conn.execute(query).fetchone()[0]
+                x = cursor.execute(query).fetchone()
             case ["Y"]:
                 y = indices[0]
                 query = f"""
                 SELECT py.{param_name}
                 FROM param_y AS py
                 JOIN year AS y ON py.y_id = y.id
-                WHERE pc.{param_name} IS NOT NULL AND y.value ={y};
+                WHERE py.{param_name} IS NOT NULL AND y.value ={y};
                 """
-                return conn.execute(query).fetchone()[0]
+                x = cursor.execute(query).fetchone()
             case ["CS","Y"]:
                 cs, y = indices
                 query = f"""
@@ -107,9 +109,9 @@ class Model():
                 JOIN commodity AS cin ON cs.cin_id = cin.id
                 JOIN commodity AS cout ON cs.cout_id = cout.id
                 JOIN year AS y ON pcy.y_id = y.id
-                WHERE pcy.{param_name} IS NOT NULL AND cs.name ={cs.cp} AND cin.name ={cs.cin} AND cout.name ={cs.cout} AND y.value ={y};
+                WHERE pcy.{param_name} IS NOT NULL AND cp.name ='{cs.cp}' AND cin.name ='{cs.cin}' AND cout.name ='{cs.cout}' AND y.value ={y};
                 """
-                return conn.execute(query).fetchone()[0]
+                x = cursor.execute(query).fetchone()
             case ["CS","T"]:
                 cs, t = indices
                 query = f"""
@@ -120,21 +122,22 @@ class Model():
                 JOIN commodity AS cin ON cs.cin_id = cin.id
                 JOIN commodity AS cout ON cs.cout_id = cout.id
                 JOIN time_step AS ts ON pct.t_id = ts.id
-                WHERE pct.{param_name} IS NOT NULL AND cs.name ={cs.cp} AND cin.name ={cs.cin} AND cout.name ={cs.cout} AND ts.value ={t};
+                WHERE pct.{param_name} IS NOT NULL AND cs.name ='{cs.cp}' AND cin.name ='{cs.cin}' AND cout.name ='{cs.cout}' AND ts.value ={t};
                 """
-                return conn.execute(query).fetchone()[0]
+                x = cursor.execute(query).fetchone()
+        return (x[0] if x else Parser.param_default_dict[param_name])
 
     def _get_set(self, set_name):
-        conn = self.conn # defined for readability
+        cursor = self.cursor # defined for readability
         match set_name:
             case "time":
-                return [x[0] for x in conn.execute("SELECT value FROM time_step;").fetchall()]
+                return [x[0] for x in cursor.execute("SELECT value FROM time_step ORDER BY value;").fetchall()]
             case "year":
-                return [x[0] for x in conn.execute("SELECT value FROM year;").fetchall()]
+                return [x[0] for x in cursor.execute("SELECT value FROM year ORDER BY value;").fetchall()]
             case "conversion_process":
-                return [x[0] for x in conn.execute("SELECT name FROM conversion_process;").fetchall()]
+                return [x[0] for x in cursor.execute("SELECT name FROM conversion_process;").fetchall()]
             case "commodity":
-                return [x[0] for x in conn.execute("SELECT name FROM commodity;").fetchall()]
+                return [x[0] for x in cursor.execute("SELECT name FROM commodity;").fetchall()]
             case "conversion_subprocess":
                 query = """
                 SELECT cp.name AS conversion_process_name, 
@@ -145,7 +148,7 @@ class Model():
                 JOIN commodity AS cin ON cs.cin_id = cin.id
                 JOIN commodity AS cout ON cs.cout_id = cout.id;
                 """
-                return [_CS(*x) for x in self.conn.execute(query).fetchall()]
+                return [_CS(*x) for x in self.cursor.execute(query).fetchall()]
             case "storage_cs":
                 query =                     """
                 SELECT cp.name AS conversion_process_name, 
@@ -155,46 +158,50 @@ class Model():
                 JOIN conversion_process AS cp ON cs.cp_id = cp.id
                 JOIN commodity AS cin ON cs.cin_id = cin.id
                 JOIN commodity AS cout ON cs.cout_id = cout.id
-                WHERE cs.is_storage = true;
+                JOIN param_cs AS pc ON cs.id = pc.cs_id
+                WHERE pc.is_storage = true;
                 """
-                return [_CS(*x) for x in self.conn.execute(query).fetchall()]
+                return [_CS(*x) for x in self.cursor.execute(query).fetchall()]
+    
+    def _get_discount_factor(self, y: int) -> float:
+         y_0 = self._get_set("year")[0]
+         return (1 + self._get_param("discount_rate"))**(y_0 - y)
     
     def _add_var(self) -> None:
-        dataset = self.dataset # alias for readability
         model = self.model # alias for readability
         self.vars = {}
         vars = self.vars # alias for readability
+        get_set = self._get_set
+
         # Costs
         vars["TOTEX"] = model.addVar(name="TOTEX")
         vars["CAPEX"] = model.addVar(name="CAPEX")
         vars["OPEX"] = model.addVar(name="OPEX")
         
         # CO2
-        vars["Total_annual_co2_emission"] = model.addVars(dataset["years"], name="Total_annual_co2_emission")
+        vars["Total_annual_co2_emission"] = model.addVars(get_set("year"), name="Total_annual_co2_emission")
         
         # Power
-        vars["Cap_new"] = model.addVars(dataset["conversion_subprocesses"], dataset["years"], name="Cap_new")
-        vars["Cap_active"] = model.addVars(dataset["conversion_subprocesses"], dataset["years"], name="Cap_active")
-        vars["Cap_res"] = model.addVars(dataset["conversion_subprocesses"], dataset["years"], name="Cap_res")
-        vars["Pin"] = model.addVars(dataset["conversion_subprocesses"], dataset["years"], dataset["times"], name="Pin")
-        vars["Pout"] = model.addVars(dataset["conversion_subprocesses"], dataset["years"], dataset["times"], name="Pout")
+        vars["Cap_new"] = model.addVars(get_set("conversion_subprocess"), get_set("year"), name="Cap_new")
+        vars["Cap_active"] = model.addVars(get_set("conversion_subprocess"), get_set("year"), name="Cap_active")
+        vars["Cap_res"] = model.addVars(get_set("conversion_subprocess"), get_set("year"), name="Cap_res")
+        vars["Pin"] = model.addVars(get_set("conversion_subprocess"), get_set("year"), get_set("time"), name="Pin")
+        vars["Pout"] = model.addVars(get_set("conversion_subprocess"), get_set("year"), get_set("time"), name="Pout")
 
         # Energy
-        vars["Eouttot"] = model.addVars(dataset["conversion_subprocesses"], dataset["years"], name="Eouttot")
-        vars["Eintot"] = model.addVars(dataset["conversion_subprocesses"], dataset["years"], name="Eintot")
-        vars["Eouttime"] = model.addVars(dataset["conversion_subprocesses"], dataset["years"], dataset["times"], name="Eouttime")
-        vars["Eintime"] = model.addVars(dataset["conversion_subprocesses"], dataset["years"], dataset["times"], name="Eintime")
-        vars["Enetgen"] = model.addVars(dataset.commodities, dataset["years"], dataset["times"], name="Enetgen")
-        vars["Enetcons"] = model.addVars(dataset.commodities, dataset["years"], dataset["times"], name="Enetcons")
+        vars["Eouttot"] = model.addVars(get_set("conversion_subprocess"), get_set("year"), name="Eouttot")
+        vars["Eintot"] = model.addVars(get_set("conversion_subprocess"), get_set("year"), name="Eintot")
+        vars["Eouttime"] = model.addVars(get_set("conversion_subprocess"), get_set("year"), get_set("time"), name="Eouttime")
+        vars["Eintime"] = model.addVars(get_set("conversion_subprocess"), get_set("year"), get_set("time"), name="Eintime")
+        vars["Enetgen"] = model.addVars(get_set("commodity"), get_set("year"), get_set("time"), name="Enetgen")
+        vars["Enetcons"] = model.addVars(get_set("commodity"), get_set("year"), get_set("time"), name="Enetcons")
 
         # Storage
-        vars["E_storage_level"] = model.addVars(dataset["conversion_subprocesses"], dataset["years"], dataset["times"], name="E_storage_level")
-        vars["E_storage_level_max"] = model.addVars(dataset["conversion_subprocesses"], dataset["years"], name="E_storage_level_max")
+        vars["E_storage_level"] = model.addVars(get_set("conversion_subprocess"), get_set("year"), get_set("time"), name="E_storage_level")
+        vars["E_storage_level_max"] = model.addVars(get_set("conversion_subprocess"), get_set("year"), name="E_storage_level_max")
 
-    
     def _add_constr(self) -> None:
         model = self.model
-        dataset = self.dataset
         self._constrs = {}
         constrs = self._constrs # alias for readability
         vars = self.vars # alias for readability
@@ -205,9 +212,9 @@ class Model():
         # Costs
         constrs["totex"] = model.addConstr(vars["TOTEX"] == vars["CAPEX"] + vars["OPEX"], name="totex")
         constrs["capex"] = model.addConstr(
-                vars["CAPEX"] == sum(get_param("discount_factor", y)*(
+                vars["CAPEX"] == sum(self._get_discount_factor(y)*(
                     get_param("co2_price",y) * vars["Total_annual_co2_emission"][y] +
-                    sum(vars["Cap_new"][cs,y] * get_param("capex_cost_power",cs, y) for cs in get_set("conversion_subprocess")) +
+                    sum(vars["Cap_new"][cs,y] * get_param("capex_cost_power",cs, y) for cs in get_set("conversion_subprocess"))
                 ) 
                 for y in get_set("year")),
                 name = "capex"
@@ -227,8 +234,8 @@ class Model():
         nondummy_commodities = {co for co in get_set("commodity") if co != "Dummy"}
         constrs["power_balance"] = model.addConstrs(
             (
-                sum(vars["Pin"][cs,y,t] for cs in dataset["conversion_subprocesses"] if cs.cin == co) == 
-                sum(vars["Pout"][cs,y,t] for cs in dataset["conversion_subprocesses"] if cs.cout == co)
+                sum(vars["Pin"][cs,y,t] for cs in get_set("conversion_subprocess") if cs.cin == co) == 
+                sum(vars["Pout"][cs,y,t] for cs in get_set("conversion_subprocess") if cs.cout == co)
                 for t in get_set("time")
                 for y in get_set("year")
                 for co in nondummy_commodities
@@ -276,7 +283,7 @@ class Model():
             (
                 vars["Pout"][cs,y,t] <= vars["Cap_active"][cs,y] * avail
                 for y in get_set("year")
-                for (cs,t, avail) in iter_param("availability")
+                for (cs,t, avail) in iter_param("availability_profile")
             ),
             name = "re_availability"
         )
@@ -312,7 +319,7 @@ class Model():
         # Fraction Equations
         constrs["min_cosupply"] = model.addConstrs(
             (
-                vars["Eouttime"][cs,y,t] >= out_frac_min * vars["Enetgen"][cs[2],y,t] # cs[2] is cout
+                vars["Eouttime"][cs,y,t] >= out_frac_min * vars["Enetgen"][cs.cout,y,t]
                 for t in get_set("time")
                 for (cs,y, out_frac_min) in iter_param("out_frac_min")
                 if out_frac_min != 0
@@ -329,7 +336,7 @@ class Model():
         )
         constrs["min_couse"] = model.addConstrs(
             (
-                vars["Eintime"][cs,y,t] >= in_frac_min[cs,y, in_frac_min] * vars["Enetcons"][cs[1],y,t] # cs[1] is cin
+                vars["Eintime"][cs,y,t] >= in_frac_min * vars["Enetcons"][cs.cin,y,t] 
                 for t in get_set("time")
                 for (cs,y, in_frac_min) in iter_param("in_frac_min")
             ),
@@ -337,7 +344,7 @@ class Model():
         )
         constrs["max_couse"] = model.addConstrs(
             (
-                vars["Eintime"][cs,y,t] <= in_frac_max * vars["Enetcons"][cs[1],y,t] # cs[1] is cin
+                vars["Eintime"][cs,y,t] <= in_frac_max * vars["Enetcons"][cs.cin,y,t]
                 for t in get_set("time")
                 for (cs,y,in_frac_max) in iter_param("in_frac_max")
             ),
@@ -355,8 +362,9 @@ class Model():
         )
         constrs["min_cap_res"] = model.addConstrs(
             (
-                vars["Cap_res"][cs,y] >= param.capacity.cap_res_min[cs,y]
-                for (cs,y,cap_res_min) in iter_param("cap_res_min")
+                vars["Cap_res"][cs,y] >= get_param("cap_res_min",cs,y)
+                for y in get_set("year")
+                for cs in get_set("conversion_subprocess")
             ),
             name = "min_cap_res"
         )
@@ -425,7 +433,7 @@ class Model():
         )
         constrs["net_to_gen"] = model.addConstrs(
             (
-                vars["Enetgen"][co,y,t] == sum(vars["Eouttime"][cs,y,t] for cs in dataset.conversion_subprocesses if cs.cout == co)
+                vars["Enetgen"][co,y,t] == sum(vars["Eouttime"][cs,y,t] for cs in get_set("conversion_subprocess") if cs.cout == co)
                 for y in get_set("year")
                 for t in get_set("time")
                 for co in get_set("commodity")
@@ -488,58 +496,73 @@ class Model():
     def solve(self) -> None:
         return self.model.optimize()
     
-    def get_output(self) -> dtcls.Output:
+    def save_output(self) -> None:
         vars = self.vars # alias for readability
-        get_set = self.get_set # alias for readability
-        conn = self.conn # alias for readability
+        get_set = self._get_set # alias for readability
+        cursor = self.cursor # alias for readability
+        # Y
+        for y in get_set("year"):
+            query = f"""
+            INSERT INTO output_y (y_id, total_annual_co2_emission)
+            SELECT y.id, {vars['Total_annual_co2_emission'][y].X}
+            FROM year AS y 
+            WHERE y.value = {y};
+            """
+            cursor.execute(query)
+        # CS,Y
         for cs in get_set("conversion_subprocess"):
             for y in get_set("year"):
                 query = f"""
-                INSERT INTO output_cs_y (cs_id, y_id, cap_new, cap_active, eouttot, eintot, enetgen, enetcons) VALUES 
-                ({cs.id}, {y.id}, {vars['Cap_new'][cs,y].X}, {vars['Cap_active'][cs,y].X}, {vars['Eouttot'][cs,y].X}, {vars['Eintot'][cs,y].X}, {vars['Enetgen'][cs.cout,y].X}, {vars['Enetcons'][cs.cin,y].X})
-                JOIN conversion_subprocesses AS cs ON cs_id = cs.id
+                INSERT INTO output_cs_y (cs_id, y_id, cap_new, cap_active, cap_res, eouttot, eintot, e_storage_level_max)  
+                SELECT cs.id, y.id, {vars['Cap_new'][cs,y].X}, {vars['Cap_active'][cs,y].X}, {vars['Cap_res'][cs,y].X}, {vars['Eouttot'][cs,y].X}, {vars['Eintot'][cs,y].X}, {vars['E_storage_level_max'][cs,y].X}
+                FROM conversion_subprocess AS cs
                 JOIN conversion_process AS cp ON cs.cp_id = cp.id
-                JOIN commodities AS cin ON cs.cin_id = cin.id
-                JOIN commodities AS cout ON cs.cout_id = cout.id
-                JOIN years AS y ON y_id = y.id
+                JOIN commodity AS cin ON cs.cin_id = cin.id
+                JOIN commodity AS cout ON cs.cout_id = cout.id
+                CROSS JOIN year AS y
+                WHERE cp.name = '{cs.cp}' AND cin.name = '{cs.cin}' AND cout.name = '{cs.cout}' AND y.value = {y};
                 """
-                conn.execute(query)
+                cursor.execute(query)
+        # CS,Y,T
         for cs in get_set("conversion_subprocess"):
             for y in get_set("year"):
                 for t in get_set("time"):
                     query = f"""
-                    INSERT INTO output_cs_y_t (cs_id, y_id, t_id, eouttime, eintime, enetgen, enetcons) VALUES
-                    ({cs.id}, {y.id}, {t.id}, {vars['Eouttime'][cs,y,t].X}, {vars['Eintime'][cs,y,t].X}, {vars['Enetgen'][cs.cout,y,t].X}, {vars['Enetcons'][cs.cin,y,t].X})
-                    JOIN conversion_subprocesses AS cs ON cs_id = cs.id
+                    INSERT INTO output_cs_y_t (cs_id, y_id, t_id, eouttime, eintime, pin, pout, e_storage_level)
+                    SELECT cs.id, y.id, t.id, {vars['Eouttime'][cs,y,t].X}, {vars['Eintime'][cs,y,t].X}, {vars['Pin'][cs,y,t].X}, {vars['Pout'][cs,y,t].X}, {vars['E_storage_level'][cs,y,t].X}
+                    FROM conversion_subprocess AS cs
                     JOIN conversion_process AS cp ON cs.cp_id = cp.id
-                    JOIN commodities AS cin ON cs.cin_id = cin.id
-                    JOIN commodities AS cout ON cs.cout_id = cout.id
-                    JOIN years AS y ON y_id = y.id
-                    JOIN time_step AS t ON t_id = t.id
+                    JOIN commodity AS cin ON cs.cin_id = cin.id
+                    JOIN commodity AS cout ON cs.cout_id = cout.id
+                    CROSS JOIN year AS y
+                    CROSS JOIN time_step AS t
+                    WHERE cp.name = '{cs.cp}' AND cin.name = '{cs.cin}' AND cout.name = '{cs.cout}' AND y.value = {y} AND t.value = {t};
                     """
-                    conn.execute(query)
+                    cursor.execute(query)
+        # CO,Y,T
         for co in get_set("commodity"):
             for y in get_set("year"):
                 for t in get_set("time"):
-                query = f"""
-                INSERT INTO output_co_y_t (co_id, y_id, t_id, eouttime, eintime, enetgen, enetcons) VALUES
-                ({co.id}, {y.id}, {t.id}, {vars['Eouttime'][co,y,t].X}, {vars['Eintime'][co,y,t].X}, {vars['Enetgen'][co,y,t].X}, {vars['Enetcons'][co,y,t].X}) 
-                JOIN commodities AS co ON co_id = co.id
-                JOIN years AS y ON y_id = y.id
-                JOIN time_step AS t ON t_id = t.id
-                """
-                conn.execute(query)
+                    query = f"""
+                    INSERT INTO output_co_y_t (co_id, y_id, t_id, enetgen, enetcons)
+                    SELECT co.id, y.id, t.id, {vars['Enetgen'][co,y,t].X}, {vars['Enetcons'][co,y,t].X}
+                    FROM commodity AS co
+                    CROSS JOIN year AS y
+                    CROSS JOIN time_step AS t
+                    WHERE co.name = '{co}' AND y.value = {y} AND t.value = {t};
+                    """
+                    cursor.execute(query)
         # without index
         query = f"""INSERT INTO output_global (OPEX, CAPEX, TOTEX) VALUES ({vars['OPEX'].X}, {vars['CAPEX'].X}, {vars['TOTEX'].X})"""
-        conn.execute(query)
-        conn.commit()
-        
+        cursor.execute(query)
+        self.conn.commit()
+
 
                 
         # # Extract solution
         # cs_y_indexes = [(cs,y) for cs in dataset.conversion_subprocesses for y in get_set("year")]
         # cs_y_t_indexes = [(cs,y,t) for cs in dataset.conversion_subprocesses for y in get_set("year") for t in get_set("time")]
-        # co_y_t_indexes = [(co,y,t) for co in dataset.commodities for y in get_set("year") for t in get_set("time")]
+        # co_y_t_indexes = [(co,y,t) for co in get_set("commodity") for y in get_set("year") for t in get_set("time")]
         # cost = dtcls.CostOutput(OPEX=vars["OPEX"].X, CAPEX=vars["CAPEX"].X, TOTEX=vars["TOTEX"].X)
         # co2 = dtcls.CO2Output(Total_annual_co2_emission= {y:vars["Total_annual_co2_emission"][y].X for y in get_set("year")})
         # power = dtcls.PowerOutput(
@@ -572,8 +595,8 @@ class Model():
         # return output
 
     
-    def save_results(self, sol_file_path: Path) -> None:
-        self.model.write(str(sol_file_path))
+    # def save_results(self, sol_file_path: Path) -> None:
+    #     self.model.write(str(sol_file_path))
 
     def load_results(self, sol_file_path: Path) -> None:
         self.model.update()

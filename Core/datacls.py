@@ -371,19 +371,19 @@ class Output:
 
 # -- Input and Output Saver and Reader --
 
-def save_input_output(input: Input, output:Output, filename: str):
-    """Save the input and output of the model in a .pkl file.
+# def save_input_output(input: Input, output:Output, filename: str):
+#     """Save the input and output of the model in a .pkl file.
 
-    :param input: the input of the model
-    :type input: Input
-    :param output: the output of the model
-    :type output: Output
-    :param filename: the path of the file
-    :type filename: str
-    """
-    saved_dict = {"input": input, "output": output}
-    with open(filename, "wb") as f:
-        pickle.dump(saved_dict,f)
+#     :param input: the input of the model
+#     :type input: Input
+#     :param output: the output of the model
+#     :type output: Output
+#     :param filename: the path of the file
+#     :type filename: str
+#     """
+#     saved_dict = {"input": input, "output": output}
+#     with open(filename, "wb") as f:
+#         pickle.dump(saved_dict,f)
 
 def read_input_output(filename:str):
     """

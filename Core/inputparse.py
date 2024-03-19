@@ -50,15 +50,44 @@ class Parser:
         "c_rate": ["CS"], 
         "efficiency_charge": ["CS"]
     }
+    param_default_dict = {
+        "dt": None, 
+        "w": None,
+        "discount_rate": None,
+        "annual_co2_limit": None,
+        "co2_price" : 0,
+        "opex_cost_energy": 0,
+        "opex_cost_power" : 0,
+        "capex_cost_power": 0, 
+        "efficiency": 1,
+        "technical_lifetime": 100,
+        "cap_min": 0,
+        "cap_max": float("inf"),
+        "cap_res_min": 0,
+        "cap_res_max": 0,
+        "availability_profile": 1,
+        "technical_availability": 1,
+        "output_profile": None,
+        "max_eout": float("inf"),
+        "min_eout" : 0,
+        "out_frac_min": 0,
+        "out_frac_max": 1,
+        "in_frac_min": 0,
+        "in_frac_max": 1,
+        "spec_co2": 0,
+        "is_storage": None, 
+        "c_rate": None, 
+        "efficiency_charge": 1
+    }
 
 
-    def __init__(self, name, techmap_dir_path, ts_dir_path, db_dir_path, scenario):
+    def __init__(self, name, techmap_dir_path, ts_dir_path, db_conn, scenario):
         self.techmap_path = techmap_dir_path.joinpath(f"{name}.xlsx")
         self.ts_dir_path = ts_dir_path
-        db_path = db_dir_path.joinpath("db.sqlite")
+        
         self.scenario = scenario
 
-        self.conn = sqlite3.connect(db_path)
+        self.conn = db_conn
         self.cursor = self.conn.cursor()
 
         # Read queries from the .sql file
@@ -70,7 +99,6 @@ class Parser:
 
         # Commit the transaction
         self.conn.commit()
-
         self.units = None
 
     def parse(self):
@@ -85,6 +113,22 @@ class Parser:
     def read_units (self, tmap) -> None:
         df = pd.read_excel(tmap,"Units")
         self.units = dict(zip(df["quantity"].str.strip(),df["scale_factor"]))
+        self.cursor.execute(f"INSERT INTO unit ({','.join(self.units.keys())}) VALUES (?,?,?,?,?,?,?);",list(self.units.values()))
+        self.conn.commit()
+    
+    def _scale(self, p_name, value) -> float:
+        if p_name in ("opex_cost_energy",):
+            return value * self.units["cost_energy"]
+        if p_name in ("opex_cost_power","capex_cost_power"):
+            return value * self.units["cost_power"]
+        if p_name in ("spec_co2",):
+            return value * self.units["co2_spec"]
+        if p_name in ("max_eout", "min_eout"):
+            return value * self.units["energy"]
+        if p_name in ("cap_min", "cap_max", "cap_res_min", "cap_res_max"):
+            return value * self.units["power"]
+        else:
+            return value
     
     def read_scenario(self, tmap):
         df = pd.read_excel(tmap,"Scenario")
@@ -102,7 +146,7 @@ class Parser:
 
         discount_rate = df["discount_rate"][row_index]
         tss_name = df["TSS"][row_index]
-        self.cursor.execute("INSERT INTO param_global (discount, tss_name) VALUES (?, ?);",(discount_rate,tss_name))
+        self.cursor.execute("INSERT INTO param_global (discount_rate, tss_name) VALUES (?, ?);",(discount_rate,tss_name))
         self.conn.commit() # commit here because it is needed for inserting co2 params
         
         params = {}
@@ -162,7 +206,6 @@ class Parser:
         
     def read_cs(self, tmap):
         df = pd.read_excel(tmap,"ConversionSubProcess",  skiprows=[1, 2])
-        
         # TO DO - verify the scenario of the conversion process
         param_names= df.columns[df.columns.to_list().index("scenario")+1:].to_list()
         for _, row in df.iterrows():
@@ -187,12 +230,12 @@ class Parser:
                                         val = f_int(y)
                                         if not np.isnan(val):                                        
                                             val = float(f_int(y))
-                                            self.cursor.execute(f"INSERT OR REPLACE INTO param_cs_y (cs_id, y_id, {p_name}) VALUES (?,?,?);",(cs_id,y_id,val))
+                                            self.cursor.execute(f"INSERT OR REPLACE INTO param_cs_y (cs_id, y_id, {p_name}) VALUES (?,?,?);",(cs_id,y_id,self._scale(p_name,val)))
                                 else: # no interval given - constant
                                     for y_id,y in years:
-                                        self.cursor.execute(f"INSERT OR REPLACE INTO param_cs_y (cs_id, y_id, {p_name}) VALUES (?,?,?);",(cs_id,y_id,p))
+                                        self.cursor.execute(f"INSERT OR REPLACE INTO param_cs_y (cs_id, y_id, {p_name}) VALUES (?,?,?);",(cs_id,y_id,self._scale(p_name,p)))
                             else: # not dependent on the year
-                                self.cursor.execute(f"INSERT OR REPLACE INTO param_cs (cs_id, {p_name}) VALUES (?,?);",(cs_id,p))
+                                self.cursor.execute(f"INSERT OR REPLACE INTO param_cs (cs_id, {p_name}) VALUES (?,?);",(cs_id,self._scale(p_name,p)))
                         else: # time dependent
                             ts_file_path = self.ts_dir_path.joinpath(f"{p}.txt")
                             tss = self.cursor.execute("SELECT id,value FROM time_step").fetchall()
@@ -210,7 +253,7 @@ class Parser:
                                 ts = ts/sum(ts)
                             # insert to database
                             for i,time_step in enumerate(tss):
-                                self.cursor.execute(f"INSERT OR REPLACE INTO param_cs_t (cs_id, t_id, {p_name}) VALUES (?,?,?);",(cs_id,time_step.id,ts[i]))
+                                self.cursor.execute(f"INSERT OR REPLACE INTO param_cs_t (cs_id, t_id, {p_name}) VALUES (?,?,?);",(cs_id,time_step.id,self._scale(p_name,ts[i])))
         self.conn.commit()
 
     def get_interpolation_f(self, param):
@@ -263,4 +306,3 @@ if __name__ == '__main__':
         print("File does not exist:", file_path)
     parser = Parser("DEModel_V2",techmap_dir_path=techmap_dir_path, ts_dir_path=ts_dir_path ,db_dir_path=db_dir_path ,scenario = "Base4twk")
     parser.parse()
-    # parser.get_input()

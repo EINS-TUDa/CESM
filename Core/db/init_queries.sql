@@ -51,6 +51,7 @@ CREATE TABLE IF NOT EXISTS unit (
     cost_energy FLOAT,
     cost_power FLOAT,
     co2_spec FLOAT,
+    money FLOAT,
     -- Add a column that holds a constant value
     constant_column INTEGER DEFAULT 1,
     CONSTRAINT only_one_row UNIQUE (constant_column)
@@ -62,7 +63,7 @@ CREATE TABLE IF NOT EXISTS param_global (
     id INTEGER PRIMARY KEY,
     dt FLOAT,
     w FLOAT,
-    discount FLOAT,
+    discount_rate FLOAT,
     tss_name text,
     -- Add a column that holds a constant value
     constant_column INTEGER DEFAULT 1,
@@ -79,6 +80,7 @@ CREATE TABLE IF NOT EXISTS param_cs (
     c_rate FLOAT,
     efficiency_charge FLOAT,
     cs_id INTEGER,
+    is_storage BOOLEAN,
     FOREIGN KEY (cs_id) REFERENCES conversion_subprocess(id),
     CONSTRAINT cs_unique UNIQUE (cs_id)
 );
@@ -141,24 +143,44 @@ CREATE TABLE IF NOT EXISTS output_global (
     CONSTRAINT only_one_row UNIQUE (constant_column)
 );
 
--- Create the 'output_cs_y' table
-CREATE TABLE IF NOT EXISTS output_cs (
+
+-- Create the 'output_y' table
+CREATE TABLE IF NOT EXISTS output_y (
     id INTEGER PRIMARY KEY,
-    value FLOAT,
+    total_annual_co2_emission FLOAT,
+    y_id INTEGER,
+    FOREIGN KEY (y_id) REFERENCES year(id),
+    CONSTRAINT y_unique UNIQUE (y_id)
+);
+
+-- Create the 'output_cs_y' table
+CREATE TABLE IF NOT EXISTS output_cs_y (
+    id INTEGER PRIMARY KEY,
     cs_id INTEGER,
     y_id INTEGER,
+    cap_new FLOAT,
+    cap_active FLOAT,
+    cap_res FLOAT,
+    eouttot FLOAT,
+    eintot FLOAT,
+    e_storage_level_max FLOAT,
     FOREIGN KEY (cs_id) REFERENCES conversion_subprocess(id),
     FOREIGN KEY (y_id) REFERENCES year(id),
     CONSTRAINT cs_y_unique UNIQUE (cs_id, y_id)
 );
 
+
 -- Create the 'output_cs_y_t' table
-CREATE TABLE IF NOT EXISTS output_cs_t (
+CREATE TABLE IF NOT EXISTS output_cs_y_t (
     id INTEGER PRIMARY KEY,
-    value FLOAT,
     cs_id INTEGER,
     y_id INTEGER,
     t_id INTEGER,
+    eouttime FLOAT,
+    eintime FLOAT,
+    pin FLOAT,
+    pout FLOAT,
+    e_storage_level FLOAT,
     FOREIGN KEY (cs_id) REFERENCES conversion_subprocess(id),
     FOREIGN KEY (y_id) REFERENCES year(id),
     FOREIGN KEY (t_id) REFERENCES time(id),
@@ -168,7 +190,8 @@ CREATE TABLE IF NOT EXISTS output_cs_t (
 -- Create the 'output_co_y_t' table
 CREATE TABLE IF NOT EXISTS output_co_y_t (
     id INTEGER PRIMARY KEY,
-    value FLOAT,
+    enetgen FLOAT,
+    enetcons FLOAT,
     co_id INTEGER,
     y_id INTEGER,
     t_id INTEGER,
