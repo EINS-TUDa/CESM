@@ -33,7 +33,6 @@ class Parser:
         with open(Path(".").joinpath("Core","params.json"), 'r') as file:
             data = json.load(file)
             self.param_index_dict = data["param_index_dict"]
-            self.param_default_dict = data["param_default_dict"]
 
 
         # Read queries from the .sql file
@@ -165,8 +164,8 @@ class Parser:
                 for p_name in param_names:
                     p = row[p_name]
                     if not pd.isna(p):
-                        if "T" not in Parser.param_index_dict[p_name]: # not time dependent
-                            if "Y" in Parser.param_index_dict[p_name]:
+                        if "T" not in self.param_index_dict[p_name]: # not time dependent
+                            if "Y" in self.param_index_dict[p_name]:
                                 years = self.cursor.execute("SELECT id,value FROM year").fetchall()
                                 #see if interval
                                 if '[' in str(p): # inveterval given

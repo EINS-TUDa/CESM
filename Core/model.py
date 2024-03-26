@@ -9,15 +9,16 @@ from pathlib import Path
 import gurobipy as gp
 from gurobipy import GRB
 # from Core.input_parser import Parser
-from Core.data_access import DOA
-from sqlite3 import Cursor
+from Core.data_access import DAO, CS
+from sqlite3 import Connection
 
 
 class Model():
-    def __init__(self, cursor: Cursor) -> None:
+    def __init__(self, conn: Connection) -> None:
         self.model = gp.Model("DEModel")
-        self.cursor = cursor
-        self.doa = DOA(self.cursor)
+        self.conn = conn
+        self.cursor = self.conn.cursor()
+        self.dao = DAO(self.conn)
 
         self._add_var()
         self._add_constr()
@@ -26,7 +27,7 @@ class Model():
         model = self.model # alias for readability
         self.vars = {}
         vars = self.vars # alias for readability
-        get_set = self._get_set
+        get_set = self.dao.get_set
 
         # Costs
         vars["TOTEX"] = model.addVar(name="TOTEX")
@@ -60,14 +61,14 @@ class Model():
         self._constrs = {}
         constrs = self._constrs # alias for readability
         vars = self.vars # alias for readability
-        get_param = self.doa.get_param
-        iter_param = self.doa.iter_param
-        get_set = self.doa.get_set
+        get_param = self.dao.get_param
+        iter_param = self.dao.iter_param
+        get_set = self.dao.get_set
 
         # Costs
         constrs["totex"] = model.addConstr(vars["TOTEX"] == vars["CAPEX"] + vars["OPEX"], name="totex")
         constrs["capex"] = model.addConstr(
-                vars["CAPEX"] == sum(self._get_discount_factor(y)*(
+                vars["CAPEX"] == sum(self.dao.get_discount_factor(y)*(
                     get_param("co2_price",y) * vars["Total_annual_co2_emission"][y] +
                     sum(vars["Cap_new"][cs,y] * get_param("capex_cost_power",cs, y) for cs in get_set("conversion_subprocess"))
                 ) 
@@ -353,7 +354,7 @@ class Model():
     
     def save_output(self) -> None:
         vars = self.vars # alias for readability
-        get_set = self.doa.get_set # alias for readability
+        get_set = self.dao.get_set # alias for readability
         cursor = self.cursor # alias for readability
         # Y
         for y in get_set("year"):

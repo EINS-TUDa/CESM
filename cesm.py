@@ -92,15 +92,15 @@ def run(model_name, scenario):
       scenario = click.prompt('Please enter a scenario name', type=click.STRING)
 
    # Create a directory for the model if it does not exist
-   db_dir_path = os.path.join(RUNS_DIR_PATH, model_name+'-'+scenario)
+   db_dir_path = RUNS_DIR_PATH.joinpath(model_name+'-'+scenario)
    if not os.path.exists(db_dir_path):
       os.mkdir(db_dir_path)
 
    # Create and Run the model
    db_path = db_dir_path.joinpath(FNAME_MODEL)
-   conn = sqlite3.connect(db_path)
-   cursor = conn.cursor()
-   parser = Parser(model_name, techmap_dir_path=TECHMAP_DIR_PATH, ts_dir_path=TS_DIR_PATH, db_cursor = cursor, scenario = scenario)
+   # conn = sqlite3.connect(db_path)
+   conn = sqlite3.connect(":memory:")
+   parser = Parser(model_name, techmap_dir_path=TECHMAP_DIR_PATH, ts_dir_path=TS_DIR_PATH, db_conn = conn, scenario = scenario)
    # (self, name, techmap_dir_path, ts_dir_path, db_conn, scenario)
 
    # Parse
@@ -144,7 +144,7 @@ def plot(simulation):
    print(f"Visualizing simulation {simulation}")
    db_path = os.path.join(RUNS_DIR_PATH, simulation, FNAME_MODEL)
    conn = sqlite3.connect(db_path)
-   dao = DAO(conn.cursor())
+   dao = DAO(conn)
    
    st = time.time()
    plotter = Plotter(dao)

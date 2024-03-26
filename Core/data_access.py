@@ -1,10 +1,10 @@
-from sqlite3 import Cursor
+from sqlite3 import Connection
 from pandas import DataFrame
 from itertools import chain
-from Core.input_parser import Parser
 from pathlib import Path
 import json
 from typing import NamedTuple
+from functools import lru_cache
 
 class CS(NamedTuple):
     cp: str
@@ -13,17 +13,22 @@ class CS(NamedTuple):
 
 # Data Access Object
 class DAO():
-    def __init__(self, cursor: Cursor) -> None:
-        self.cursor = cursor()
+    def __init__(self, conn : Connection) -> None:
+        self.conn = conn
+        self.cursor = conn.cursor()
         with open(Path(".").joinpath("Core","params.json"), 'r') as f:
-            self.output_index_dict = json.load(f)["output_index_dict"]
+            data = json.load(f)
+            self.output_index_dict = data["output_index_dict"]
+            self.param_index_dict = data["param_index_dict"]
+            self.param_default_dict = data["param_default_dict"]
+
     
     def get_as_dataframe(self, name: str, **filterby) -> DataFrame:
         param_or_out = 'output' if name in self.output_indext_dict else 'param'
         if name in self.output_index_dict:
             indexes = self.output_index_dict.get(name)
-        elif name in Parser.param_index_dict:
-            indexes = Parser.param_index_dict.get(name)
+        elif name in self.param_index_dict:
+            indexes = self.param_index_dict.get(name)
         else:
             raise ValueError(f"{name} is not neither input parameter nor output variable")
 
@@ -90,7 +95,7 @@ class DAO():
     
     def iter_param(self, param_name):
         cursor = self.cursor
-        match Parser.param_index_dict[param_name]:
+        match self.param_index_dict[param_name]:
             case ["CS"]:
                 query = f"""
                 SELECT pc.{param_name}, cp.name AS cp, cin.name AS cin, cout.name AS cout
@@ -101,7 +106,7 @@ class DAO():
                 JOIN commodity AS cout ON cs.cout_id = cout.id
                 WHERE pc.{param_name} IS NOT NULL;
                 """
-                return [(_CS(*x[1:]),x[0]) for x in cursor.execute(query).fetchall()]
+                return [(CS(*x[1:]),x[0]) for x in cursor.execute(query).fetchall()]
             case ["Y"]:
                 query = f"""
                 SELECT py.{param_name}, y.value
@@ -121,7 +126,7 @@ class DAO():
                 JOIN year AS y ON pcy.y_id = y.id
                 WHERE pcy.{param_name} IS NOT NULL;
                 """
-                return [(_CS(*x[1:4]),x[4],x[0]) for x in cursor.execute(query).fetchall()]
+                return [(CS(*x[1:4]),x[4],x[0]) for x in cursor.execute(query).fetchall()]
             case ["CS","T"]:
                 query = f"""
                 SELECT pct.{param_name}, cp.name AS cp, cin.name AS cin, cout.name AS cout, ts.value
@@ -133,11 +138,11 @@ class DAO():
                 JOIN time_step AS ts ON pct.t_id = ts.id
                 WHERE pct.{param_name} IS NOT NULL;
                 """
-                return [(_CS(*x[1:4]),x[4],x[0]) for x in cursor.execute(query).fetchall()]
+                return [(CS(*x[1:4]),x[4],x[0]) for x in cursor.execute(query).fetchall()]
     
     def get_param(self, param_name, *indices):
         cursor = self.cursor # defined for readability
-        match Parser.param_index_dict[param_name]:
+        match self.param_index_dict[param_name]:
             case []:
                 x = cursor.execute(f"SELECT {param_name} FROM param_global;").fetchone()
             case ["CS"]:
@@ -187,8 +192,9 @@ class DAO():
                 WHERE pct.{param_name} IS NOT NULL AND cs.name ='{cs.cp}' AND cin.name ='{cs.cin}' AND cout.name ='{cs.cout}' AND ts.value ={t};
                 """
                 x = cursor.execute(query).fetchone()
-        return (x[0] if x else Parser.param_default_dict[param_name])
+        return (x[0] if x else self.param_default_dict[param_name])
     
+    @lru_cache(maxsize=None)
     def get_set(self, set_name):
         cursor = self.cursor # defined for readability
         match set_name:
@@ -226,6 +232,6 @@ class DAO():
                 return [CS(*x) for x in self.cursor.execute(query).fetchall()]
 
     def get_discount_factor(self, y: int) -> float:
-         y_0 = self._get_set("year")[0]
-         return (1 + self._get_param("discount_rate"))**(y_0 - y)
+         y_0 = self.get_set("year")[0]
+         return (1 + self.get_param("discount_rate"))**(y_0 - y)
     
