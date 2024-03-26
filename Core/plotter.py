@@ -79,7 +79,7 @@ class Plotter:
          sankey_link_opacity=0.5,
       )
 
-      self._colors_order = dao.get_plot_settings()
+      self._colors_orders = dao.get_plot_settings()
 
 
    # -- Main Plotting Functions --   
@@ -318,11 +318,11 @@ class Plotter:
 
    # -- Validators --
    def _check_year(self, year:int):
-      if year not in [int(y) for y in self.input.dataset.years]:
+      if year not in [int(y) for y in self.dao.get_set("year")]:
          raise PlotterExeption(f"Year {year} not in model!")
 
    def _check_commodity(self, commodity:str):
-      if commodity not in [str(co) for co in self.input.dataset.commodities]:
+      if commodity not in [str(co) for co in self.dao.get_set("commodity")]:
          raise PlotterExeption(f"Commodity {commodity} not in model!")
 
 
@@ -339,14 +339,14 @@ class Plotter:
       )
    
    def _get_color(self, name:str):
-      if self.self._colors_orders[name]["color"] is None:
-         self.self._colors_orders[name]["color"] = _rand_hex_color()
-      return self.self._colors_orders[name]["color"]
+      if self._colors_orders[name]["color"] is None:
+         self._colors_orders[name]["color"] = _rand_hex_color()
+      return self._colors_orders[name]["color"]
 
    def _get_order(self, name:str):
-      if self.self._colors_orders[name]["order"] is None:
-         self.self._colors_orders[name]["order"] = random.randint(0,100)
-      return self.self._colors_orders[name]["order"]
+      if self._colors_orders[name]["order"] is None:
+         self._colors_orders[name]["order"] = random.randint(0,100)
+      return self._colors_orders[name]["order"]
 
    @property
    def link_opacity(self):

@@ -368,46 +368,62 @@ class Model():
         # CS,Y
         for cs in get_set("conversion_subprocess"):
             for y in get_set("year"):
-                query = f"""
-                INSERT INTO output_cs_y (cs_id, y_id, cap_new, cap_active, cap_res, eouttot, eintot, e_storage_level_max)  
-                SELECT cs.id, y.id, {vars['Cap_new'][cs,y].X}, {vars['Cap_active'][cs,y].X}, {vars['Cap_res'][cs,y].X}, {vars['Eouttot'][cs,y].X}, {vars['Eintot'][cs,y].X}, {vars['E_storage_level_max'][cs,y].X}
-                FROM conversion_subprocess AS cs
-                JOIN conversion_process AS cp ON cs.cp_id = cp.id
-                JOIN commodity AS cin ON cs.cin_id = cin.id
-                JOIN commodity AS cout ON cs.cout_id = cout.id
-                CROSS JOIN year AS y
-                WHERE cp.name = '{cs.cp}' AND cin.name = '{cs.cin}' AND cout.name = '{cs.cout}' AND y.value = {y};
-                """
-                cursor.execute(query)
-        # CS,Y,T
-        for cs in get_set("conversion_subprocess"):
-            for y in get_set("year"):
-                for t in get_set("time"):
+                cap_new = vars['Cap_new'][cs,y].X
+                cap_active = vars['Cap_active'][cs,y].X
+                cap_res = vars['Cap_res'][cs,y].X
+                eouttot = vars['Eouttot'][cs,y].X
+                eintot = vars['Eintot'][cs,y].X
+                e_storage_level_max =  vars['E_storage_level_max'][cs,y].X
+                if any(item != 0 for item in (cap_new, cap_active, cap_res, eouttot, eintot, e_storage_level_max)):
                     query = f"""
-                    INSERT INTO output_cs_y_t (cs_id, y_id, t_id, eouttime, eintime, pin, pout, e_storage_level)
-                    SELECT cs.id, y.id, t.id, {vars['Eouttime'][cs,y,t].X}, {vars['Eintime'][cs,y,t].X}, {vars['Pin'][cs,y,t].X}, {vars['Pout'][cs,y,t].X}, {vars['E_storage_level'][cs,y,t].X}
+                    INSERT INTO output_cs_y (cs_id, y_id, cap_new, cap_active, cap_res, eouttot, eintot, e_storage_level_max)  
+                    SELECT cs.id, y.id, {cap_new}, {cap_active}, {cap_res}, {eouttot}, {eintot}, {e_storage_level_max}
                     FROM conversion_subprocess AS cs
                     JOIN conversion_process AS cp ON cs.cp_id = cp.id
                     JOIN commodity AS cin ON cs.cin_id = cin.id
                     JOIN commodity AS cout ON cs.cout_id = cout.id
                     CROSS JOIN year AS y
-                    CROSS JOIN time_step AS t
-                    WHERE cp.name = '{cs.cp}' AND cin.name = '{cs.cin}' AND cout.name = '{cs.cout}' AND y.value = {y} AND t.value = {t};
+                    WHERE cp.name = '{cs.cp}' AND cin.name = '{cs.cin}' AND cout.name = '{cs.cout}' AND y.value = {y};
                     """
                     cursor.execute(query)
+        # CS,Y,T
+        for cs in get_set("conversion_subprocess"):
+            for y in get_set("year"):
+                for t in get_set("time"):
+                    eouttime = vars["Eouttime"][cs,y,t].X
+                    eintime = vars["Eintime"][cs,y,t].X
+                    pin = vars["Pin"][cs,y,t].X
+                    pout = vars["Pout"][cs,y,t].X
+                    e_storage_level = vars["E_storage_level"][cs,y,t].X
+                    if any(item != 0 for item in (eouttime, eintime, pin, pout, e_storage_level)):
+                        query = f"""
+                        INSERT INTO output_cs_y_t (cs_id, y_id, t_id, eouttime, eintime, pin, pout, e_storage_level)
+                        SELECT cs.id, y.id, t.id, {vars['Eouttime'][cs,y,t].X}, {vars['Eintime'][cs,y,t].X}, {vars['Pin'][cs,y,t].X}, {vars['Pout'][cs,y,t].X}, {vars['E_storage_level'][cs,y,t].X}
+                        FROM conversion_subprocess AS cs
+                        JOIN conversion_process AS cp ON cs.cp_id = cp.id
+                        JOIN commodity AS cin ON cs.cin_id = cin.id
+                        JOIN commodity AS cout ON cs.cout_id = cout.id
+                        CROSS JOIN year AS y
+                        CROSS JOIN time_step AS t
+                        WHERE cp.name = '{cs.cp}' AND cin.name = '{cs.cin}' AND cout.name = '{cs.cout}' AND y.value = {y} AND t.value = {t};
+                        """
+                        cursor.execute(query)
         # CO,Y,T
         for co in get_set("commodity"):
             for y in get_set("year"):
                 for t in get_set("time"):
-                    query = f"""
-                    INSERT INTO output_co_y_t (co_id, y_id, t_id, enetgen, enetcons)
-                    SELECT co.id, y.id, t.id, {vars['Enetgen'][co,y,t].X}, {vars['Enetcons'][co,y,t].X}
-                    FROM commodity AS co
-                    CROSS JOIN year AS y
-                    CROSS JOIN time_step AS t
-                    WHERE co.name = '{co}' AND y.value = {y} AND t.value = {t};
-                    """
-                    cursor.execute(query)
+                    enetgen = vars["Enetgen"][co,y,t].X
+                    enetcons = vars["Enetcons"][co,y,t].X
+                    if any(item != 0 for item in (enetgen, enetcons)):
+                        query = f"""
+                        INSERT INTO output_co_y_t (co_id, y_id, t_id, enetgen, enetcons)
+                        SELECT co.id, y.id, t.id, {enetgen}, {enetcons}
+                        FROM commodity AS co
+                        CROSS JOIN year AS y
+                        CROSS JOIN time_step AS t
+                        WHERE co.name = '{co}' AND y.value = {y} AND t.value = {t};
+                        """
+                        cursor.execute(query)
         # without index
         query = f"""INSERT INTO output_global (OPEX, CAPEX, TOTEX) VALUES ({vars['OPEX'].X}, {vars['CAPEX'].X}, {vars['TOTEX'].X})"""
         cursor.execute(query)

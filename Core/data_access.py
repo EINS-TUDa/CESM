@@ -24,7 +24,7 @@ class DAO():
 
     
     def get_as_dataframe(self, name: str, **filterby) -> DataFrame:
-        param_or_out = 'output' if name in self.output_indext_dict else 'param'
+        param_or_out = 'output' if name in self.output_index_dict else 'param'
         if name in self.output_index_dict:
             indexes = self.output_index_dict.get(name)
         elif name in self.param_index_dict:
@@ -36,7 +36,7 @@ class DAO():
         headers = []
         for index in indexes:
             if index == 'CS':
-                headers.append(['cp','cin','cout'])
+                headers.extend(['cp','cin','cout'])
             elif index == 'CO':
                 headers.append('Commodity')
             elif index == 'Y':
@@ -56,12 +56,12 @@ class DAO():
             """).fetchall()
         elif indexes == ['CS','Y']:
             rows = self.cursor.execute(f"""
-                SELECT cp.name, cin.name, cout.name, v.value , {name.lower()} FROM {param_or_out}_cs_y
+                SELECT cp.name, cin.name, cout.name, y.value , {name.lower()} FROM {param_or_out}_cs_y
                 JOIN conversion_subprocess AS cs ON cs_id = cs.id
                 JOIN conversion_process AS cp ON cs.cp_id = cp.id
                 JOIN commodity AS cin ON cs.cin_id = cin.id
                 JOIN commodity AS cout ON cs.cout_id = cout.id
-                JOIN years AS y ON y_id = y.id
+                JOIN year AS y ON y_id = y.id
             """).fetchall()
         elif indexes == ['CS','Y','T']:
             rows = self.cursor.execute(f"""
@@ -89,8 +89,8 @@ class DAO():
         return df
 
     def get_plot_settings(self):
-        co_rows = self.cursor.execute(f"""SELECT name, color, order FROM commodity""").fetchall()
-        cp_rows = self.cursor.execute(f"""SELECT name, color, order FROM conversion_process""").fetchall()
+        co_rows = self.cursor.execute(f"""SELECT name, plot_color, plot_order FROM commodity""").fetchall()
+        cp_rows = self.cursor.execute(f"""SELECT name, plot_color, plot_order FROM conversion_process""").fetchall()
         return {name:{"color":color, "order": order} for (name, color, order) in chain(co_rows,cp_rows)}
     
     def iter_param(self, param_name):
@@ -218,7 +218,7 @@ class DAO():
                 """
                 return [CS(*x) for x in self.cursor.execute(query).fetchall()]
             case "storage_cs":
-                query =                     """
+                query = """
                 SELECT cp.name AS conversion_process_name, 
                 cin.name AS input_commodity_name, 
                 cout.name AS output_commodity_name 

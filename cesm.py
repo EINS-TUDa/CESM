@@ -97,8 +97,6 @@ def run(model_name, scenario):
       os.mkdir(db_dir_path)
 
    # Create and Run the model
-   db_path = db_dir_path.joinpath(FNAME_MODEL)
-   # conn = sqlite3.connect(db_path)
    conn = sqlite3.connect(":memory:")
    parser = Parser(model_name, techmap_dir_path=TECHMAP_DIR_PATH, ts_dir_path=TS_DIR_PATH, db_conn = conn, scenario = scenario)
    # (self, name, techmap_dir_path, ts_dir_path, db_conn, scenario)
@@ -126,6 +124,11 @@ def run(model_name, scenario):
    print("\n#-- Saving model started --#")
    st = time.time()
    model_instance.save_output()
+
+   # write the in-memory db to disk
+   db_path = db_dir_path.joinpath(FNAME_MODEL)
+   disk_db_conn = sqlite3.connect(db_path)
+   conn.backup(disk_db_conn)
    
 
    
