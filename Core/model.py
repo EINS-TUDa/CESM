@@ -5,11 +5,9 @@ Author: Sina Hajikazemi
 Date: 10.10.2023
 """
 
-from pathlib import Path
 import gurobipy as gp
 from gurobipy import GRB
-# from Core.input_parser import Parser
-from Core.data_access import DAO, CS
+from Core.data_access import DAO
 from sqlite3 import Connection
 
 
@@ -430,18 +428,18 @@ class Model():
         self.conn.commit()
 
 
-if __name__ == "__main__":
-    techmap_dir_path = Path(".").joinpath("Data", "Techmap") # techmap directory path
-    ts_dir_path = Path(".").joinpath("Data", "TimeSeries") # time series directory path
-    parser = Parser("DEModel",techmap_dir_path=techmap_dir_path, ts_dir_path=ts_dir_path ,scenario = "Base4twk")
-    parser.parse()
-    input = parser.get_input()
-    model = Model(input)
-    model.solve()
+# if __name__ == "__main__":
+#     techmap_dir_path = Path(".").joinpath("Data", "Techmap") # techmap directory path
+#     ts_dir_path = Path(".").joinpath("Data", "TimeSeries") # time series directory path
+#     parser = Parser("DEModel",techmap_dir_path=techmap_dir_path, ts_dir_path=ts_dir_path ,scenario = "Base4twk")
+#     parser.parse()
+#     input = parser.get_input()
+#     model = Model(input)
+#     model.solve()
     
-    # save results
-    # sol_file_path = Path(".").joinpath("Runs", "sol_DEModel.sol")
-    # model.save_results(sol_file_path=sol_file_path)
+#     # save results
+#     # sol_file_path = Path(".").joinpath("Runs", "sol_DEModel.sol")
+#     # model.save_results(sol_file_path=sol_file_path)
 
 
 
