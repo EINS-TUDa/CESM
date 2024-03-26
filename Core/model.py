@@ -8,164 +8,19 @@ Date: 10.10.2023
 from pathlib import Path
 import gurobipy as gp
 from gurobipy import GRB
-from Core.inputparse import Parser
-from sqlite3 import Connection
-from typing import NamedTuple
-import pandas as pd
+# from Core.input_parser import Parser
+from Core.data_access import DOA
+from sqlite3 import Cursor
 
-class _CS(NamedTuple):
-    cp: str
-    cin: str
-    cout: str
 
 class Model():
-    def __init__(self, conn: Connection) -> None:
+    def __init__(self, cursor: Cursor) -> None:
         self.model = gp.Model("DEModel")
-        self.conn = conn
-        self.cursor = conn.cursor()
+        self.cursor = cursor
+        self.doa = DOA(self.cursor)
+
         self._add_var()
         self._add_constr()
-        
-    def _iter_param(self, param_name):
-        cursor = self.cursor
-        match Parser.param_index_dict[param_name]:
-            case ["CS"]:
-                query = f"""
-                SELECT pc.{param_name}, cp.name AS cp, cin.name AS cin, cout.name AS cout
-                FROM param_cs AS pc
-                JOIN conversion_subprocess AS cs ON pc.cs_id = cs.id
-                JOIN conversion_process AS cp ON cs.cp_id = cp.id
-                JOIN commodity AS cin ON cs.cin_id = cin.id
-                JOIN commodity AS cout ON cs.cout_id = cout.id
-                WHERE pc.{param_name} IS NOT NULL;
-                """
-                return [(_CS(*x[1:]),x[0]) for x in cursor.execute(query).fetchall()]
-            case ["Y"]:
-                query = f"""
-                SELECT py.{param_name}, y.value
-                FROM param_y AS py
-                JOIN year AS y ON py.y_id = y.id
-                WHERE py.{param_name} IS NOT NULL;
-                """
-                return [(x[1],x[0]) for x in cursor.execute(query).fetchall()]
-            case ["CS","Y"]:
-                query = f"""
-                SELECT pcy.{param_name}, cp.name AS cp, cin.name AS cin, cout.name AS cout, y.value
-                FROM param_cs_y AS pcy
-                JOIN conversion_subprocess AS cs ON pcy.cs_id = cs.id
-                JOIN conversion_process AS cp ON cs.cp_id = cp.id
-                JOIN commodity AS cin ON cs.cin_id = cin.id
-                JOIN commodity AS cout ON cs.cout_id = cout.id
-                JOIN year AS y ON pcy.y_id = y.id
-                WHERE pcy.{param_name} IS NOT NULL;
-                """
-                return [(_CS(*x[1:4]),x[4],x[0]) for x in cursor.execute(query).fetchall()]
-            case ["CS","T"]:
-                query = f"""
-                SELECT pct.{param_name}, cp.name AS cp, cin.name AS cin, cout.name AS cout, ts.value
-                FROM param_cs_t AS pct
-                JOIN conversion_subprocess AS cs ON pct.cs_id = cs.id
-                JOIN conversion_process AS cp ON cs.cp_id = cp.id
-                JOIN commodity AS cin ON cs.cin_id = cin.id
-                JOIN commodity AS cout ON cs.cout_id = cout.id
-                JOIN time_step AS ts ON pct.t_id = ts.id
-                WHERE pct.{param_name} IS NOT NULL;
-                """
-                return [(_CS(*x[1:4]),x[4],x[0]) for x in cursor.execute(query).fetchall()]
-
-    def _get_param(self, param_name, *indices):
-        cursor = self.cursor # defined for readability
-        match Parser.param_index_dict[param_name]:
-            case []:
-                x = cursor.execute(f"SELECT {param_name} FROM param_global;").fetchone()
-            case ["CS"]:
-                cs = indices[0]
-                query = f"""
-                SELECT pc.{param_name}
-                FROM param_cs AS pc
-                JOIN conversion_subprocess AS cs ON pc.cs_id = cs.id
-                JOIN conversion_process AS cp ON cs.cp_id = cp.id
-                JOIN commodity AS cin ON cs.cin_id = cin.id
-                JOIN commodity AS cout ON cs.cout_id = cout.id
-                WHERE pc.{param_name} IS NOT NULL AND cp.name ='{cs.cp}' AND cin.name ='{cs.cin}' AND cout.name ='{cs.cout}';
-                """
-                x = cursor.execute(query).fetchone()
-            case ["Y"]:
-                y = indices[0]
-                query = f"""
-                SELECT py.{param_name}
-                FROM param_y AS py
-                JOIN year AS y ON py.y_id = y.id
-                WHERE py.{param_name} IS NOT NULL AND y.value ={y};
-                """
-                x = cursor.execute(query).fetchone()
-            case ["CS","Y"]:
-                cs, y = indices
-                query = f"""
-                SELECT pcy.{param_name}
-                FROM param_cs_y AS pcy
-                JOIN conversion_subprocess AS cs ON pcy.cs_id = cs.id
-                JOIN conversion_process AS cp ON cs.cp_id = cp.id
-                JOIN commodity AS cin ON cs.cin_id = cin.id
-                JOIN commodity AS cout ON cs.cout_id = cout.id
-                JOIN year AS y ON pcy.y_id = y.id
-                WHERE pcy.{param_name} IS NOT NULL AND cp.name ='{cs.cp}' AND cin.name ='{cs.cin}' AND cout.name ='{cs.cout}' AND y.value ={y};
-                """
-                x = cursor.execute(query).fetchone()
-            case ["CS","T"]:
-                cs, t = indices
-                query = f"""
-                SELECT pct.{param_name}
-                FROM param_cs_t AS pct
-                JOIN conversion_subprocess AS cs ON pct.cs_id = cs.id
-                JOIN conversion_process AS cp ON cs.cp_id = cp.id
-                JOIN commodity AS cin ON cs.cin_id = cin.id
-                JOIN commodity AS cout ON cs.cout_id = cout.id
-                JOIN time_step AS ts ON pct.t_id = ts.id
-                WHERE pct.{param_name} IS NOT NULL AND cs.name ='{cs.cp}' AND cin.name ='{cs.cin}' AND cout.name ='{cs.cout}' AND ts.value ={t};
-                """
-                x = cursor.execute(query).fetchone()
-        return (x[0] if x else Parser.param_default_dict[param_name])
-
-    def _get_set(self, set_name):
-        cursor = self.cursor # defined for readability
-        match set_name:
-            case "time":
-                return [x[0] for x in cursor.execute("SELECT value FROM time_step ORDER BY value;").fetchall()]
-            case "year":
-                return [x[0] for x in cursor.execute("SELECT value FROM year ORDER BY value;").fetchall()]
-            case "conversion_process":
-                return [x[0] for x in cursor.execute("SELECT name FROM conversion_process;").fetchall()]
-            case "commodity":
-                return [x[0] for x in cursor.execute("SELECT name FROM commodity;").fetchall()]
-            case "conversion_subprocess":
-                query = """
-                SELECT cp.name AS conversion_process_name, 
-                cin.name AS input_commodity_name, 
-                cout.name AS output_commodity_name 
-                FROM conversion_subprocess AS cs
-                JOIN conversion_process AS cp ON cs.cp_id = cp.id
-                JOIN commodity AS cin ON cs.cin_id = cin.id
-                JOIN commodity AS cout ON cs.cout_id = cout.id;
-                """
-                return [_CS(*x) for x in self.cursor.execute(query).fetchall()]
-            case "storage_cs":
-                query =                     """
-                SELECT cp.name AS conversion_process_name, 
-                cin.name AS input_commodity_name, 
-                cout.name AS output_commodity_name 
-                FROM conversion_subprocess AS cs
-                JOIN conversion_process AS cp ON cs.cp_id = cp.id
-                JOIN commodity AS cin ON cs.cin_id = cin.id
-                JOIN commodity AS cout ON cs.cout_id = cout.id
-                JOIN param_cs AS pc ON cs.id = pc.cs_id
-                WHERE pc.is_storage = true;
-                """
-                return [_CS(*x) for x in self.cursor.execute(query).fetchall()]
-    
-    def _get_discount_factor(self, y: int) -> float:
-         y_0 = self._get_set("year")[0]
-         return (1 + self._get_param("discount_rate"))**(y_0 - y)
     
     def _add_var(self) -> None:
         model = self.model # alias for readability
@@ -205,9 +60,9 @@ class Model():
         self._constrs = {}
         constrs = self._constrs # alias for readability
         vars = self.vars # alias for readability
-        get_param = self._get_param
-        iter_param = self._iter_param
-        get_set = self._get_set
+        get_param = self.doa.get_param
+        iter_param = self.doa.iter_param
+        get_set = self.doa.get_set
 
         # Costs
         constrs["totex"] = model.addConstr(vars["TOTEX"] == vars["CAPEX"] + vars["OPEX"], name="totex")
@@ -498,7 +353,7 @@ class Model():
     
     def save_output(self) -> None:
         vars = self.vars # alias for readability
-        get_set = self._get_set # alias for readability
+        get_set = self.doa.get_set # alias for readability
         cursor = self.cursor # alias for readability
         # Y
         for y in get_set("year"):
@@ -556,51 +411,6 @@ class Model():
         query = f"""INSERT INTO output_global (OPEX, CAPEX, TOTEX) VALUES ({vars['OPEX'].X}, {vars['CAPEX'].X}, {vars['TOTEX'].X})"""
         cursor.execute(query)
         self.conn.commit()
-
-
-                
-        # # Extract solution
-        # cs_y_indexes = [(cs,y) for cs in dataset.conversion_subprocesses for y in get_set("year")]
-        # cs_y_t_indexes = [(cs,y,t) for cs in dataset.conversion_subprocesses for y in get_set("year") for t in get_set("time")]
-        # co_y_t_indexes = [(co,y,t) for co in get_set("commodity") for y in get_set("year") for t in get_set("time")]
-        # cost = dtcls.CostOutput(OPEX=vars["OPEX"].X, CAPEX=vars["CAPEX"].X, TOTEX=vars["TOTEX"].X)
-        # co2 = dtcls.CO2Output(Total_annual_co2_emission= {y:vars["Total_annual_co2_emission"][y].X for y in get_set("year")})
-        # power = dtcls.PowerOutput(
-        #     Cap_new= {(cs,y): vars["Cap_new"][cs,y].X for (cs,y) in cs_y_indexes},
-        #     Cap_active= {(cs,y): vars["Cap_active"][cs,y].X for (cs,y) in cs_y_indexes},
-        #     Cap_res= {(cs,y): vars["Cap_res"][cs,y].X for (cs,y) in cs_y_indexes},
-        #     Pin= {(cs,y,t): vars["Pin"][cs,y,t].X for (cs,y,t) in cs_y_t_indexes},
-        #     Pout= {(cs,y,t): vars["Pout"][cs,y,t].X for (cs,y,t) in cs_y_t_indexes},
-        # )
-        # energy = dtcls.EnergyOutput(
-        #     Eouttot= {(cs,y): vars["Eouttot"][cs,y].X for (cs,y) in cs_y_indexes},
-        #     Eintot= {(cs,y): vars["Eintot"][cs,y].X for (cs,y) in cs_y_indexes},
-        #     Eouttime= {(cs,y,t): vars["Eouttime"][cs,y,t].X for (cs,y,t) in cs_y_t_indexes},
-        #     Eintime= {(cs,y,t): vars["Eintime"][cs,y,t].X for (cs,y,t) in cs_y_t_indexes},
-        #     Enetgen= {(co,y,t): vars["Enetgen"][co,y,t].X for (co,y,t) in co_y_t_indexes},
-        #     Enetcons= {(co,y,t): vars["Enetcons"][co,y,t].X for (co,y,t) in co_y_t_indexes},
-        # )
-        # storage = dtcls.StorageOutput(
-        #     E_storage_level= {(cs,y,t): vars["E_storage_level"][cs,y,t].X for (cs,y,t) in cs_y_t_indexes},
-        #     E_storage_level_max= {(cs,y): vars["E_storage_level_max"][cs,y].X for (cs,y) in cs_y_indexes}
-        # )
-
-        # output = dtcls.Output(
-        #     cost= cost,
-        #     co2= co2,
-        #     power= power,
-        #     energy = energy,
-        #     storage= storage
-        # )
-        # return output
-
-    
-    # def save_results(self, sol_file_path: Path) -> None:
-    #     self.model.write(str(sol_file_path))
-
-    def load_results(self, sol_file_path: Path) -> None:
-        self.model.update()
-        self.model.read(str(sol_file_path))
 
 
 if __name__ == "__main__":

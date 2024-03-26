@@ -496,5 +496,4 @@ def get_as_dataframe(obj: Dict[Any,float], **filterby) -> DataFrame:
             df = df[df[k] == v]
         except KeyError:
             raise Exception(f"Key {k} not found in DataFrame! Existing keys: {df.columns}")
-
     return df

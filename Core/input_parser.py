@@ -9,9 +9,8 @@ from pathlib import Path
 import pandas as pd
 import numpy as np
 import scipy.interpolate
-# import Core.datacls as dtcls
 from collections import namedtuple
-import sqlite3
+import json
 
 
 
@@ -21,65 +20,6 @@ class Parser:
         Import techmap and timeseries
         Generates .dat input file
     """
-    param_index_dict = {
-        "dt": [], 
-        "w": [],
-        "discount_rate": [],
-        "annual_co2_limit": ["Y"],
-        "co2_price" : ["Y"],
-        "opex_cost_energy": ["CS","Y"],
-        "opex_cost_power" :["CS","Y"],
-        "capex_cost_power":["CS","Y"], 
-        "efficiency": ["CS"],
-        "technical_lifetime": ["CS"],
-        "cap_min":["CS", "Y"],
-        "cap_max":["CS", "Y"],
-        "cap_res_min":["CS", "Y"],
-        "cap_res_max":["CS", "Y"],
-        "availability_profile": ["CS", "T"],
-        "technical_availability": ["CS"],
-        "output_profile": ["CS", "T"],
-        "max_eout":["CS","Y"],
-        "min_eout" :["CS","Y"],
-        "out_frac_min":["CS","Y"],
-        "out_frac_max":["CS","Y"],
-        "in_frac_min":["CS","Y"],
-        "in_frac_max":["CS","Y"],
-        "spec_co2": ["CS"],
-        "is_storage": ["CS"], 
-        "c_rate": ["CS"], 
-        "efficiency_charge": ["CS"]
-    }
-    param_default_dict = {
-        "dt": None, 
-        "w": None,
-        "discount_rate": None,
-        "annual_co2_limit": None,
-        "co2_price" : 0,
-        "opex_cost_energy": 0,
-        "opex_cost_power" : 0,
-        "capex_cost_power": 0, 
-        "efficiency": 1,
-        "technical_lifetime": 100,
-        "cap_min": 0,
-        "cap_max": float("inf"),
-        "cap_res_min": 0,
-        "cap_res_max": 0,
-        "availability_profile": 1,
-        "technical_availability": 1,
-        "output_profile": None,
-        "max_eout": float("inf"),
-        "min_eout" : 0,
-        "out_frac_min": 0,
-        "out_frac_max": 1,
-        "in_frac_min": 0,
-        "in_frac_max": 1,
-        "spec_co2": 0,
-        "is_storage": None, 
-        "c_rate": None, 
-        "efficiency_charge": 1
-    }
-
 
     def __init__(self, name, techmap_dir_path, ts_dir_path, db_conn, scenario):
         self.techmap_path = techmap_dir_path.joinpath(f"{name}.xlsx")
@@ -89,6 +29,12 @@ class Parser:
 
         self.conn = db_conn
         self.cursor = self.conn.cursor()
+
+        with open(Path(".").joinpath("Core","params.json"), 'r') as file:
+            data = json.load(file)
+            self.param_index_dict = data["param_index_dict"]
+            self.param_default_dict = data["param_default_dict"]
+
 
         # Read queries from the .sql file
         with open(Path(".").joinpath("Core","db","init_queries.sql"), 'r') as file:
@@ -170,8 +116,7 @@ class Parser:
             if co2_price is not None or annual_co2_limit is not None:
                 self.cursor.execute("INSERT INTO param_y (y_id, annual_co2_limit, co2_price) VALUES (?,?,?);",(y_id, annual_co2_limit, co2_price))
         self.conn.commit()
-        
-                   
+                          
     def read_tss(self,tmap):
         tss_name = self.cursor.execute("SELECT tss_name FROM param_global").fetchall()[0][0]
         df = pd.read_excel(tmap,"TSS")

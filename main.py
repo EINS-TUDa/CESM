@@ -5,7 +5,7 @@ Author: Sina Hajikazemi
 Date: 18.10.2023
 """
 
-from Core.inputparse import Parser
+from Core.input_parser import Parser
 from pathlib import Path
 from Core.model import Model
 from Core.plotter import Plotter, PlotType 
@@ -13,7 +13,6 @@ from Core.plotter import Plotter, PlotType
 import sqlite3
 # from Core.db import generate_db_input, write_to_db
 
-# model_name = "TestModel" # model name
 model_name = "DEModel_V2" # model name
 
 techmap_dir_path = Path(".").joinpath("Data", "Techmap")
