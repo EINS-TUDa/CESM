@@ -7,7 +7,8 @@
 import plotly.graph_objects as go
 import plotly.colors as plc
 
-from Core.datacls import Input, Output, get_as_dataframe
+# from Core.datacls import Input, Output, get_as_dataframe
+from Core.data_access import DAO
 
 import pandas as pd
 import random
@@ -16,8 +17,6 @@ from typing import List
 
 class PlotterExeption(Exception):
    pass
-
-
 
 # -- Enums --
 class Bar(Enum):
@@ -68,9 +67,9 @@ def _hex_to_rgba(hexarray, alpha):
 # -- Plotter Class --
 class Plotter:
     
-   def __init__(self, ipt:Input, otp:Output):
-      self.input = ipt
-      self.output = otp
+   def __init__(self, dao:DAO):
+      self.dao = dao
+      self.get_as_dataframe = dao.get_as_dataframe
 
       self.plot_setings = dict(
          font_family="Knuth's Computer Modern",
@@ -80,8 +79,7 @@ class Plotter:
          sankey_link_opacity=0.5,
       )
 
-      self._colors = ipt.plot_settings.colors
-      self._order =  ipt.plot_settings.orders
+      self._colors_orders = dao.get_plot_settings()
 
 
    # -- Main Plotting Functions --   
@@ -91,20 +89,21 @@ class Plotter:
           year (int): Year to plot
 
       """
-      
+      get_as_dataframe = self.get_as_dataframe
       self._check_year(year)
       
       # Energy Use: Cin -> CP
-      consumption = get_as_dataframe(self.output.energy.Eintot, Year=year)
+      consumption = get_as_dataframe("Eintot", Year=year)
       consumption.rename(columns={"cp":"target", "cin":"source"}, inplace=True)
       
       # Energy Production: -> CP -> Cout
-      production = get_as_dataframe(self.output.energy.Eouttot, Year=year)
+      production = get_as_dataframe("Eouttot", Year=year)
       production.rename(columns={"cp":"source", "cout":"target"}, inplace=True)
 
       # Join Dataframes and remove Dummy Nodes
       sankey_df = pd.concat([consumption.loc[:,["source","target", "value"]],
                              production.loc[:,["source","target", "value"]]])
+      
       sankey_df = sankey_df.loc[sankey_df["source"] != "Dummy"]
       sankey_df = sankey_df.loc[sankey_df["target"] != "Dummy"]
 
@@ -139,14 +138,15 @@ class Plotter:
 
    def plot_single_value(self, single_value_type: list[PlotType.SingleValue]):
       # Gather Data
+      get_as_dataframe = self.get_as_dataframe
       data = dict()
       for sv_ty in single_value_type:
          if sv_ty == PlotType.SingleValue.CAPEX:
-            data["CAPEX"] = self.output.cost.CAPEX
+            data["CAPEX"] = get_as_dataframe("CAPEX").iloc[0,0]
          elif sv_ty == PlotType.SingleValue.OPEX:
-            data["OPEX"] = self.output.cost.OPEX
+            data["OPEX"] = get_as_dataframe("OPEX").iloc[0,0]
          elif sv_ty == PlotType.SingleValue.TOTEX:
-            data["TOTEX"] = self.output.cost.TOTEX
+            data["TOTEX"] = get_as_dataframe("TOTEX").iloc[0,0]
          else:
             raise PlotterExeption("Invalid type for plotting!")
       
@@ -171,24 +171,24 @@ class Plotter:
           PlotterExeption: Asked for a plot that requires a commodity but none was given!
           PlotterExeption: Invalid type for plotting!
       """
-
+      get_as_dataframe = self.get_as_dataframe
       stacks = 'cp' # Default Stacks
 
       if bar_type == PlotType.Bar.CO2_EMISSION:
-         data = get_as_dataframe(self.output.co2.Total_annual_co2_emission)
+         data = get_as_dataframe("Total_annual_co2_emission")
          title = f"CO2 Emission for {commodity}"
          stacks = None
          yaxis = "CO2 [t]"
 
       elif bar_type == PlotType.Bar.CO2_PRICE:
-         data = get_as_dataframe(self.input.param.co2.co2_price)
+         data = get_as_dataframe("co2_price")
          title = f"CO2 Price"
          stacks = None
          yaxis = "Price [€/t]"
 
 
       elif bar_type == PlotType.Bar.PRIMARY_ENERGY:
-         data = get_as_dataframe(self.output.energy.Eouttot, cin="Dummy")
+         data = get_as_dataframe("Eouttot", cin="Dummy")
          title = f"Primary Energy Use"
          yaxis = "Energy [MWh]"
       
@@ -199,19 +199,19 @@ class Plotter:
             raise PlotterExeption("Commodity must be set for this plot!")
          
          elif bar_type == PlotType.Bar.ENERGY_CONSUMPTION:
-            data = get_as_dataframe(self.output.energy.Eintot, cin=commodity)
+            data = get_as_dataframe("Eintot", cin=commodity)
             title = f"Energy Consumption for {commodity}"
             yaxis = "Energy [MWh]"
          elif bar_type == PlotType.Bar.ENERGY_PRODUCTION:
-            data = get_as_dataframe(self.output.energy.Eouttot, cout=commodity)
+            data = get_as_dataframe("Eouttot", cout=commodity)
             title = f"Energy Production for {commodity}"
             yaxis = "Energy [MWh]"
          elif bar_type == PlotType.Bar.ACTIVE_CAPACITY:
-            data = get_as_dataframe(self.output.power.Cap_active, cout=commodity)
+            data = get_as_dataframe("Cap_active", cout=commodity)
             title = f"Active Capacity for {commodity}"
             yaxis = "Power [MW]"
          elif bar_type == PlotType.Bar.NEW_CAPACITY:
-            data = get_as_dataframe(self.output.power.Cap_new, cout=commodity)
+            data = get_as_dataframe("Cap_new", cout=commodity)
             title = f"New Capacity for {commodity}"
             yaxis = "Power [MW]"
          else:
@@ -236,26 +236,26 @@ class Plotter:
       Raises:
           PlotterExeption: Invalid type for plotting!
       """
-
+      get_as_dataframe = self.get_as_dataframe
       stacks = "cp" # Default Stacks
 
       if timeseries_type == PlotType.TimeSeries.ENERGY_CONSUMPTION:
-         data = get_as_dataframe(self.output.energy.Eintime, cin=commodity, Year=year)
+         data = get_as_dataframe("Eintime", cin=commodity, Year=year)
          title = f"Energy Consumption for {commodity} in {year}"
          yaxis = "Energy [MWh]"
       
       elif timeseries_type == PlotType.TimeSeries.ENERGY_PRODUCTION:
-         data = get_as_dataframe(self.output.energy.Eouttime, cout=commodity, Year=year)
+         data = get_as_dataframe("Eouttime", cout=commodity, Year=year)
          title = f"Energy Production for {commodity} in {year}"
          yaxis = "Energy [MWh]"
      
       elif timeseries_type == PlotType.TimeSeries.POWER_CONSUMPTION:
-         data = get_as_dataframe(self.output.power.Pin, cin=commodity, Year=year)
+         data = get_as_dataframe("Pin", cin=commodity, Year=year)
          title = f"Power Consumption for {commodity} in {year}"
          yaxis = "Power [MW]"
       
       elif timeseries_type == PlotType.TimeSeries.POWER_PRODUCTION:
-         data = get_as_dataframe(self.output.power.Pout, cout=commodity, Year=year)
+         data = get_as_dataframe("Pout", cout=commodity, Year=year)
          title = f"Power Production for {commodity} in {year}"
          yaxis = "Power [MW]"
 
@@ -318,11 +318,11 @@ class Plotter:
 
    # -- Validators --
    def _check_year(self, year:int):
-      if year not in [int(y) for y in self.input.dataset.years]:
+      if year not in [int(y) for y in self.dao.get_set("year")]:
          raise PlotterExeption(f"Year {year} not in model!")
 
    def _check_commodity(self, commodity:str):
-      if commodity not in [str(co) for co in self.input.dataset.commodities]:
+      if commodity not in [str(co) for co in self.dao.get_set("commodity")]:
          raise PlotterExeption(f"Commodity {commodity} not in model!")
 
 
@@ -339,14 +339,14 @@ class Plotter:
       )
    
    def _get_color(self, name:str):
-      if name not in self._colors:
-         self._colors[name] = _rand_hex_color()
-      return self._colors[name]
+      if self._colors_orders[name]["color"] is None:
+         self._colors_orders[name]["color"] = _rand_hex_color()
+      return self._colors_orders[name]["color"]
 
    def _get_order(self, name:str):
-      if name not in self._order:
-         self._order[name] = random.randint(0,100)
-      return self._order[name]
+      if self._colors_orders[name]["order"] is None:
+         self._colors_orders[name]["order"] = random.randint(0,100)
+      return self._colors_orders[name]["order"]
 
    @property
    def link_opacity(self):

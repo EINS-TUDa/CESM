@@ -3,9 +3,9 @@ numpy
 scipy
 pandas
 gurobipy
-pydantic
 plotly
 kaleido
 click
 InquirerPy
+SQLAlchemy
 pyarrow

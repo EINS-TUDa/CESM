@@ -12,16 +12,18 @@ from pathlib import Path
 from InquirerPy import prompt
 
 # -- internal imports -- #
-from Core.inputparse import Parser
+from Core.input_parser import Parser
 from Core.model import Model
-from Core.datacls import save_input_output, read_input_output
+# from Core.datacls import save_input_output, read_input_output
 from Core.plotter import Plotter, PlotType
+from Core.data_access import DAO
+import sqlite3
 
 # Constants
-TECHMAP_DIR_PATH = Path(".").joinpath(os.getcwd(), 'Data', 'Techmap')
-TS_DIR_PATH = Path(".").joinpath(os.getcwd(), 'Data', 'TimeSeries')
-RUNS_DIR_PATH = Path(".").joinpath(os.getcwd(), 'Runs')
-FNAME_MODEL = 'input_output.pkl'
+TECHMAP_DIR_PATH = Path(".").joinpath('Data', 'Techmap')
+TS_DIR_PATH = Path(".").joinpath('Data', 'TimeSeries')
+RUNS_DIR_PATH = Path(".").joinpath('Runs')
+FNAME_MODEL = 'db.sqlite'
 # -- Helpers -- #
 def get_existing_models():
       """Return a list of existing models"""
@@ -59,15 +61,15 @@ def get_list_inquirer_choices(choices, name=None, message=None, type='list'):
       'choices': choices,
    }
 
-def prompt_commodities(input):
-      cos = [str(c) for c in input.dataset.commodities]
+def prompt_commodities(doa):
+      cos = [str(c) for c in doa.get_set("commodity")]
       # remove Dummy
       cos.remove('Dummy')
 
       return prompt(get_list_inquirer_choices(cos, name='commodities', type='checkbox', message='Select commodities: Select with spacebar and confirm with enter'))['commodities']
 
-def prompt_years(input):
-    yy = [int(y) for y in input.dataset.years]
+def prompt_years(doa):
+    yy = [int(y) for y in doa.get_set("year")]
     return prompt(get_list_inquirer_choices(yy, name='years', type='checkbox', message='Select years: Select with spacebar and confirm with enter'))['years']
    
 
@@ -89,20 +91,27 @@ def run(model_name, scenario):
    if scenario is None:
       scenario = click.prompt('Please enter a scenario name', type=click.STRING)
 
-   # Create and Run the model 
-   parser = Parser(model_name, techmap_dir_path=TECHMAP_DIR_PATH, ts_dir_path=TS_DIR_PATH ,scenario = scenario) 
+   # Create a directory for the model if it does not exist
+   db_dir_path = RUNS_DIR_PATH.joinpath(model_name+'-'+scenario)
+   if not os.path.exists(db_dir_path):
+      os.mkdir(db_dir_path)
+
+   # Create and Run the model
+   conn = sqlite3.connect(":memory:")
+   parser = Parser(model_name, techmap_dir_path=TECHMAP_DIR_PATH, ts_dir_path=TS_DIR_PATH, db_conn = conn, scenario = scenario)
+   # (self, name, techmap_dir_path, ts_dir_path, db_conn, scenario)
 
    # Parse
    print("\n#-- Parsing started --#")
    st = time.time()
    parser.parse()
-   model_input = parser.get_input()
+   # model_input = parser.get_input()
    print(f"Parsing finished in {time.time()-st:.2f} seconds")
 
    # Build
    print("\n#-- Building model started --#")
    st = time.time()
-   model_instance = Model(model_input)
+   model_instance = Model(conn=conn)
    print(f"Building model finished in {time.time()-st:.2f} seconds")
 
    # Solve
@@ -114,14 +123,21 @@ def run(model_name, scenario):
    # Save
    print("\n#-- Saving model started --#")
    st = time.time()
-   model_output = model_instance.get_output()
+   model_instance.save_output()
+
    
-   # Create a directory for the model if it does not exist
-   path = os.path.join(RUNS_DIR_PATH, model_name+'-'+scenario)
-   if not os.path.exists(path):
-      os.mkdir(path)
+   db_path = db_dir_path.joinpath(FNAME_MODEL)
+   if db_path.exists():
+      # Delete the file using unlink()
+      db_path.unlink()
    
-   save_input_output(input=model_input, output=model_output,filename=os.path.join(path, FNAME_MODEL))
+   # write the in-memory db to disk
+   disk_db_conn = sqlite3.connect(db_path)
+   conn.backup(disk_db_conn)
+   
+
+   
+   # save_input_output(input=model_input, output=model_output,filename=os.path.join(path, FNAME_MODEL))
    print(f"Saving model finished in {time.time()-st:.2f} seconds")
      
 @app.command(name='plot')
@@ -134,10 +150,12 @@ def plot(simulation):
       
 
    print(f"Visualizing simulation {simulation}")
-   input, output = read_input_output(os.path.join(RUNS_DIR_PATH, simulation, FNAME_MODEL))
+   db_path = os.path.join(RUNS_DIR_PATH, simulation, FNAME_MODEL)
+   conn = sqlite3.connect(db_path)
+   dao = DAO(conn)
    
    st = time.time()
-   plotter = Plotter(input, output)
+   plotter = Plotter(dao)
 
 
    while True:
@@ -151,7 +169,7 @@ def plot(simulation):
       plots = prompt(get_list_inquirer_choices(p_type.__members__, name='plot', type='checkbox', message='Please choose plots: Select with spacebar and confirm with enter'))['plot']
       
       if plot_type == 'Bar':
-         commodities = prompt_commodities(input)
+         commodities = prompt_commodities(dao)
          # Combination
          for p in plots:
             if p == 'PRIMARY_ENERGY':
@@ -161,8 +179,8 @@ def plot(simulation):
                   plotter.plot_bars(getattr(p_type, p), commodity=c)
 
       elif plot_type == 'TimeSeries':
-         years = prompt_years(input)
-         commodities = prompt_commodities(input)
+         years = prompt_years(dao)
+         commodities = prompt_commodities(dao)
 
          for p in plots:
             for y in years:
@@ -170,7 +188,7 @@ def plot(simulation):
                   plotter.plot_timeseries(getattr(p_type, p), year=y, commodity=x)
       
       elif plot_type == 'Sankey':
-         years = prompt_years(input)
+         years = prompt_years(dao)
          for y in years:
             f = plotter.plot_sankey(y)
             f.show()
