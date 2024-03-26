@@ -127,6 +127,11 @@ def run(model_name, scenario):
 
    # write the in-memory db to disk
    db_path = db_dir_path.joinpath(FNAME_MODEL)
+   if db_path.exists():
+      # Delete the file using unlink()
+      db_path.unlink()
+      print("File deleted successfully:", db_path)
+   
    disk_db_conn = sqlite3.connect(db_path)
    conn.backup(disk_db_conn)
    
