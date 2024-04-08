@@ -140,59 +140,76 @@ class DAO():
                 """
                 return [(CS(*x[1:4]),x[4],x[0]) for x in cursor.execute(query).fetchall()]
     
-    def get_param(self, param_name, *indices):
+    def get_param(self, name, *indices):
         cursor = self.cursor # defined for readability
-        match self.param_index_dict[param_name]:
+        param_or_out = 'output' if name in self.output_index_dict else 'param'
+        if name in self.output_index_dict:
+            indexes = self.output_index_dict.get(name)
+        elif name in self.param_index_dict:
+            indexes = self.param_index_dict.get(name)
+        else:
+            raise ValueError(f"{name} is not neither input parameter nor output variable")
+        
+        match indexes:
             case []:
-                x = cursor.execute(f"SELECT {param_name} FROM param_global;").fetchone()
+                x = cursor.execute(f"SELECT {name} FROM {param_or_out}_global;").fetchone()
             case ["CS"]:
                 cs = indices[0]
                 query = f"""
-                SELECT pc.{param_name}
+                SELECT pc.{name}
                 FROM param_cs AS pc
                 JOIN conversion_subprocess AS cs ON pc.cs_id = cs.id
                 JOIN conversion_process AS cp ON cs.cp_id = cp.id
                 JOIN commodity AS cin ON cs.cin_id = cin.id
                 JOIN commodity AS cout ON cs.cout_id = cout.id
-                WHERE pc.{param_name} IS NOT NULL AND cp.name ='{cs.cp}' AND cin.name ='{cs.cin}' AND cout.name ='{cs.cout}';
+                WHERE pc.{name} IS NOT NULL AND cp.name ='{cs.cp}' AND cin.name ='{cs.cin}' AND cout.name ='{cs.cout}';
                 """
                 x = cursor.execute(query).fetchone()
             case ["Y"]:
                 y = indices[0]
                 query = f"""
-                SELECT py.{param_name}
-                FROM param_y AS py
+                SELECT py.{name}
+                FROM {param_or_out}_y AS py
                 JOIN year AS y ON py.y_id = y.id
-                WHERE py.{param_name} IS NOT NULL AND y.value ={y};
+                WHERE py.{name} IS NOT NULL AND y.value ={y};
+                """
+                x = cursor.execute(query).fetchone()
+            case ["T"]:
+                t = indices[0]
+                query = f"""
+                SELECT pt.{name}
+                FROM {param_or_out}_t AS pt
+                JOIN time AS t ON pt.t_id = t.id
+                WHERE pt.{name} IS NOT NULL AND t.value ={t};
                 """
                 x = cursor.execute(query).fetchone()
             case ["CS","Y"]:
                 cs, y = indices
                 query = f"""
-                SELECT pcy.{param_name}
-                FROM param_cs_y AS pcy
+                SELECT pcy.{name}
+                FROM {param_or_out}_cs_y AS pcy
                 JOIN conversion_subprocess AS cs ON pcy.cs_id = cs.id
                 JOIN conversion_process AS cp ON cs.cp_id = cp.id
                 JOIN commodity AS cin ON cs.cin_id = cin.id
                 JOIN commodity AS cout ON cs.cout_id = cout.id
                 JOIN year AS y ON pcy.y_id = y.id
-                WHERE pcy.{param_name} IS NOT NULL AND cp.name ='{cs.cp}' AND cin.name ='{cs.cin}' AND cout.name ='{cs.cout}' AND y.value ={y};
+                WHERE pcy.{name} IS NOT NULL AND cp.name ='{cs.cp}' AND cin.name ='{cs.cin}' AND cout.name ='{cs.cout}' AND y.value ={y};
                 """
                 x = cursor.execute(query).fetchone()
             case ["CS","T"]:
                 cs, t = indices
                 query = f"""
-                SELECT pct.{param_name}
-                FROM param_cs_t AS pct
+                SELECT pct.{name}
+                FROM {param_or_out}_cs_t AS pct
                 JOIN conversion_subprocess AS cs ON pct.cs_id = cs.id
                 JOIN conversion_process AS cp ON cs.cp_id = cp.id
                 JOIN commodity AS cin ON cs.cin_id = cin.id
                 JOIN commodity AS cout ON cs.cout_id = cout.id
                 JOIN time_step AS ts ON pct.t_id = ts.id
-                WHERE pct.{param_name} IS NOT NULL AND cs.name ='{cs.cp}' AND cin.name ='{cs.cin}' AND cout.name ='{cs.cout}' AND ts.value ={t};
+                WHERE pct.{name} IS NOT NULL AND cs.name ='{cs.cp}' AND cin.name ='{cs.cin}' AND cout.name ='{cs.cout}' AND ts.value ={t};
                 """
                 x = cursor.execute(query).fetchone()
-        return (x[0] if x else self.param_default_dict[param_name])
+        return (x[0] if x else self.param_default_dict[name])
     
     @lru_cache(maxsize=None)
     def get_set(self, set_name):
