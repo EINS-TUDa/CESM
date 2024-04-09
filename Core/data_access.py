@@ -251,4 +251,3 @@ class DAO():
     def get_discount_factor(self, y: int) -> float:
          y_0 = self.get_set("year")[0]
          return (1 + self.get_row("discount_rate"))**(y_0 - y)
-    
