@@ -59,16 +59,16 @@ class Model():
         self._constrs = {}
         constrs = self._constrs # alias for readability
         vars = self.vars # alias for readability
-        get_param = self.dao.get_param
-        iter_param = self.dao.iter_param
+        get_row = self.dao.get_row
+        iter_row = self.dao.iter_row
         get_set = self.dao.get_set
 
         # Costs
         constrs["totex"] = model.addConstr(vars["TOTEX"] == vars["CAPEX"] + vars["OPEX"], name="totex")
         constrs["capex"] = model.addConstr(
                 vars["CAPEX"] == sum(self.dao.get_discount_factor(y)*(
-                    get_param("co2_price",y) * vars["Total_annual_co2_emission"][y] +
-                    sum(vars["Cap_new"][cs,y] * get_param("capex_cost_power",cs, y) for cs in get_set("conversion_subprocess"))
+                    get_row("co2_price",y) * vars["Total_annual_co2_emission"][y] +
+                    sum(vars["Cap_new"][cs,y] * get_row("capex_cost_power",cs, y) for cs in get_set("conversion_subprocess"))
                 ) 
                 for y in get_set("year")),
                 name = "capex"
@@ -76,8 +76,8 @@ class Model():
         
         model.addConstr(
             vars["OPEX"] == sum(
-                vars["Cap_active"][cs,y] *  get_param("opex_cost_power",cs,y) +
-                vars["Eouttot"][cs,y] * get_param("opex_cost_energy",cs,y)
+                vars["Cap_active"][cs,y] *  get_row("opex_cost_power",cs,y) +
+                vars["Eouttot"][cs,y] * get_row("opex_cost_energy",cs,y)
                 for cs in get_set("conversion_subprocess") 
                 for y in get_set("year")
             ),
@@ -100,7 +100,7 @@ class Model():
         # CO2
         constrs["co2_emission_eq"] = model.addConstrs(
             (
-                vars["Total_annual_co2_emission"][y] == sum(get_param("spec_co2", cs) * vars["Eouttot"][cs,y] for cs in get_set("conversion_subprocess"))
+                vars["Total_annual_co2_emission"][y] == sum(get_row("spec_co2", cs) * vars["Eouttot"][cs,y] for cs in get_set("conversion_subprocess"))
                 for y in get_set("year")
             ),
             name="co2_emission_eq"
@@ -108,7 +108,7 @@ class Model():
         constrs["co2_emission_limit"] = model.addConstrs(
             (
                 vars["Total_annual_co2_emission"][y] <= limit
-                for (y,limit) in iter_param("annual_co2_limit")
+                for (y,limit) in iter_row("annual_co2_limit")
             ),
             name = "co2_emission_limit"
         )
@@ -116,7 +116,7 @@ class Model():
         # Power Output Constraints
         constrs["efficiency"] = model.addConstrs(
             (
-                vars["Pout"][cs,y,t] == vars["Pin"][cs,y,t] * get_param("efficiency",cs)
+                vars["Pout"][cs,y,t] == vars["Pin"][cs,y,t] * get_row("efficiency",cs)
                 for y in get_set("year")
                 for t in get_set("time")
                 for cs in get_set("conversion_subprocess")
@@ -137,13 +137,13 @@ class Model():
             (
                 vars["Pout"][cs,y,t] <= vars["Cap_active"][cs,y] * avail
                 for y in get_set("year")
-                for (cs,t, avail) in iter_param("availability_profile")
+                for (cs,t, avail) in iter_row("availability_profile")
             ),
             name = "re_availability"
         )
         constrs["technical_availability"] = model.addConstrs(
             (
-                vars["Pout"][cs,y,t] <= vars["Cap_active"][cs,y] * get_param("technical_availability",cs)
+                vars["Pout"][cs,y,t] <= vars["Cap_active"][cs,y] * get_row("technical_availability",cs)
                 for cs in get_set("conversion_subprocess") 
                 for y in get_set("year")
                 for t in get_set("time")          
@@ -152,7 +152,7 @@ class Model():
         # Power Energy Constraints
         constrs["eouttime"] = model.addConstrs(
             (
-                vars["Eouttime"][cs,y,t] == vars["Pout"][cs,y,t] * get_param("dt") * get_param("w") 
+                vars["Eouttime"][cs,y,t] == vars["Pout"][cs,y,t] * get_row("dt") * get_row("w") 
                 for y in get_set("year")
                 for t in get_set("time")
                 for cs in get_set("conversion_subprocess")
@@ -162,7 +162,7 @@ class Model():
         
         constrs["eintime"] = model.addConstrs(
             (
-                vars["Eintime"][cs,y,t] == vars["Pin"][cs,y,t] * get_param("dt") * get_param("w")
+                vars["Eintime"][cs,y,t] == vars["Pin"][cs,y,t] * get_row("dt") * get_row("w")
                 for y in get_set("year")
                 for t in get_set("time")
                 for cs in get_set("conversion_subprocess")
@@ -175,7 +175,7 @@ class Model():
             (
                 vars["Eouttime"][cs,y,t] >= out_frac_min * vars["Enetgen"][cs.cout,y,t]
                 for t in get_set("time")
-                for (cs,y, out_frac_min) in iter_param("out_frac_min")
+                for (cs,y, out_frac_min) in iter_row("out_frac_min")
                 if out_frac_min != 0
             ),
             name = "min_cosupply"
@@ -184,7 +184,7 @@ class Model():
             (
                 vars["Eouttime"][cs,y,t] <= out_frac_max * vars["Enetgen"][cs.cout,y,t]
                 for t in get_set("time")
-                for (cs,y,out_frac_max) in iter_param("out_frac_max")
+                for (cs,y,out_frac_max) in iter_row("out_frac_max")
             ),
             name = "max_cosupply"
         )
@@ -192,7 +192,7 @@ class Model():
             (
                 vars["Eintime"][cs,y,t] >= in_frac_min * vars["Enetcons"][cs.cin,y,t] 
                 for t in get_set("time")
-                for (cs,y, in_frac_min) in iter_param("in_frac_min")
+                for (cs,y, in_frac_min) in iter_row("in_frac_min")
             ),
             name = "min_couse"
         )
@@ -200,7 +200,7 @@ class Model():
             (
                 vars["Eintime"][cs,y,t] <= in_frac_max * vars["Enetcons"][cs.cin,y,t]
                 for t in get_set("time")
-                for (cs,y,in_frac_max) in iter_param("in_frac_max")
+                for (cs,y,in_frac_max) in iter_row("in_frac_max")
             ),
             name = "max_couse"
         )
@@ -208,7 +208,7 @@ class Model():
         # Capacity
         constrs["max_cap_res"] = model.addConstrs(
             (
-                vars["Cap_res"][cs,y] <= get_param("cap_res_max",cs,y)
+                vars["Cap_res"][cs,y] <= get_row("cap_res_max",cs,y)
                 for y in get_set("year")
                 for cs in get_set("conversion_subprocess")
             ),
@@ -216,7 +216,7 @@ class Model():
         )
         constrs["min_cap_res"] = model.addConstrs(
             (
-                vars["Cap_res"][cs,y] >= get_param("cap_res_min",cs,y)
+                vars["Cap_res"][cs,y] >= get_row("cap_res_min",cs,y)
                 for y in get_set("year")
                 for cs in get_set("conversion_subprocess")
             ),
@@ -225,7 +225,7 @@ class Model():
 
         constrs["cap_active"] = model.addConstrs(
             (
-                vars["Cap_active"][cs,y] == vars["Cap_res"][cs,y] + sum(vars["Cap_new"][cs,yy] for yy in get_set("year") if int(yy) in range(y-int(get_param("technical_lifetime",cs)), y+1))
+                vars["Cap_active"][cs,y] == vars["Cap_res"][cs,y] + sum(vars["Cap_new"][cs,yy] for yy in get_set("year") if int(yy) in range(y-int(get_row("technical_lifetime",cs)), y+1))
                 for y in get_set("year")
                 for cs in get_set("conversion_subprocess")
             ),
@@ -234,14 +234,14 @@ class Model():
         constrs["max_cap_active"] = model.addConstrs(
             (
                 vars["Cap_active"][cs,y] <= cap_max
-                for (cs,y,cap_max) in iter_param("cap_max")
+                for (cs,y,cap_max) in iter_row("cap_max")
             ),
             name = "max_cap_active"
         )
         constrs["min_cap_active"] = model.addConstrs(
             (
                 vars["Cap_active"][cs,y] >= cap_min
-                for (cs,y,cap_min) in iter_param("cap_min")
+                for (cs,y,cap_min) in iter_row("cap_min")
             ),
             name = "min_cap_active"
         )
@@ -266,14 +266,14 @@ class Model():
         constrs["max_energy_out"] = model.addConstrs(
             (
                 vars["Eouttot"][cs,y] <= max_eout
-                for (cs,y,max_eout) in iter_param("max_eout")
+                for (cs,y,max_eout) in iter_row("max_eout")
             ),
             name = "max_energy_out"
         )
         constrs["min_energy_out"] = model.addConstrs(
             (
                 vars["Eouttot"][cs,y] >= min_eout
-                for (cs,y,min_eout) in iter_param("min_eout")
+                for (cs,y,min_eout) in iter_row("min_eout")
             ),
             name = "min_energy_out"
         )
@@ -281,7 +281,7 @@ class Model():
             (
                 vars["Eouttime"][cs,y,t] == output_profile * vars["Eouttot"][cs,y]     
                 for y in get_set("year")
-                for (cs,t,output_profile) in iter_param("output_profile")
+                for (cs,t,output_profile) in iter_row("output_profile")
             ),
             name = "load_shape"
         )
@@ -327,8 +327,8 @@ class Model():
         constrs["energy_balance"] = model.addConstrs(
             (
                 vars["E_storage_level"][cs,y,t] == vars["E_storage_level"][cs,y,get_set("time")[get_set("time").index(t)-1]]  
-                + vars["Pin"][cs,y,t] * get_param("dt","global") * get_param("efficiency_charge",cs) 
-                - vars["Pout"][cs,y,t] * get_param("dt","global") / get_param("efficiency",cs) 
+                + vars["Pin"][cs,y,t] * get_row("dt","global") * get_row("efficiency_charge",cs) 
+                - vars["Pout"][cs,y,t] * get_row("dt","global") / get_row("efficiency",cs) 
                 for y in get_set("year")
                 for t in get_set("time")
                 for cs in get_set("storage_cs")
@@ -338,7 +338,7 @@ class Model():
 
         constrs["c_rate_relation"] = model.addConstrs(
             (
-                vars["E_storage_level_max"][cs,y] == vars["Cap_active"][cs,y] / get_param("c_rate",cs)
+                vars["E_storage_level_max"][cs,y] == vars["Cap_active"][cs,y] / get_row("c_rate",cs)
                 for y in get_set("year")
                 for cs in get_set("storage_cs")
             ),

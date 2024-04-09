@@ -60,7 +60,7 @@ class AttackModel(Model):
             name = "upper_limits_lb"
         )
         upper_constrs["upper_sum"] = model.addConstr(
-            0 == sum(upper_vars["Upper_vars"][t] * dao.get_param("availability_profile", self.attacked_cs,t) for t in dao.get_set("time")),
+            0 == sum(upper_vars["Upper_vars"][t] * dao.get_row("availability_profile", self.attacked_cs,t) for t in dao.get_set("time")),
             name="upper_sum",
         )
         if attack_params.constrained_cs_ineq == '>':
@@ -75,11 +75,6 @@ class AttackModel(Model):
             )
         else:
             raise ValueError(f"constrained_cs_ineq {self.constrained_cs_ineq} not recognized")
-
-        # upper_constrs["upper_obj"] = model.addConstr(
-        #     upper_vars["upper_obj"] >= sum(upper_vars["upper_vars"][t]**2 for t in dataset.times),
-        #     name = "upper_obj"
-        # )
 
         # added for absolute value
         upper_constrs["upper_obj"] = model.addConstr(

@@ -10,6 +10,7 @@ import pandas as pd
 import numpy as np
 import scipy.interpolate
 from collections import namedtuple
+from Core.params import Param_Index_Dict
 import json
 
 
@@ -30,9 +31,7 @@ class Parser:
         self.conn = db_conn
         self.cursor = self.conn.cursor()
 
-        with open(Path(".").joinpath("Core","params.json"), 'r') as file:
-            data = json.load(file)
-            self.param_index_dict = data["param_index_dict"]
+        self.param_index_dict = Param_Index_Dict
 
 
         # Read queries from the .sql file

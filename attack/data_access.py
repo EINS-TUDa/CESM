@@ -1,6 +1,7 @@
 from Core.data_access import DAO, CS
 from sqlite3 import Connection
 from typing import NamedTuple
+from Core.params import Output_Index_Dict
 
 class Attack_params(NamedTuple):
     attacked_cs: CS
@@ -23,11 +24,11 @@ class PADM_params(NamedTuple):
 class AttackDOA(DAO):
     def __init__(self, conn: Connection) -> None:
         super().__init__(conn)
-        self.output_index_dict["Upper"] = ['T']
+        Output_Index_Dict["Upper"] = ['T']
 
-    def get_upper(self, t):
-        value = self.cursor.execute(f"""
-            SELECT t.value, upper FROM output_t
-            JOIN time AS t ON t_id = {t}
-        """).fetchone()
-        return value
+    # def get_upper(self, t):
+    #     value = self.cursor.execute(f"""
+    #         SELECT t.value, upper FROM output_t
+    #         JOIN time AS t ON t_id = {t}
+    #     """).fetchone()
+    #     return value
