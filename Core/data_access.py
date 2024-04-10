@@ -15,11 +15,12 @@ class DAO():
     def __init__(self, conn : Connection) -> None:
         self.conn = conn
         self.cursor = conn.cursor()
+        self.output_index_dict = Output_Index_Dict
     
     def get_as_dataframe(self, name: str, **filterby) -> DataFrame:
-        param_or_out = 'output' if name in Output_Index_Dict else 'param'
-        if name in Output_Index_Dict:
-            indexes = Output_Index_Dict.get(name)
+        param_or_out = 'output' if name in self.output_index_dict else 'param'
+        if name in self.output_index_dict:
+            indexes = self.output_index_dict.get(name)
         elif name in Param_Index_Dict:
             indexes = Param_Index_Dict.get(name)
         else:
@@ -58,9 +59,9 @@ class DAO():
         return {name:{"color":color, "order": order} for (name, color, order) in chain(co_rows,cp_rows)}
     
     def iter_row(self, name:str):
-        param_or_out = 'output' if name in Output_Index_Dict else 'param'
-        if name in Output_Index_Dict:
-            indexes = Output_Index_Dict.get(name)
+        param_or_out = 'output' if name in self.output_index_dict else 'param'
+        if name in self.output_index_dict:
+            indexes = self.output_index_dict.get(name)
         elif name in Param_Index_Dict:
             indexes = Param_Index_Dict.get(name)
         else:
@@ -139,14 +140,14 @@ class DAO():
             
     def get_row(self, name, *indices):
         cursor = self.cursor # defined for readability
-        param_or_out = 'output' if name in Output_Index_Dict else 'param'
-        if name in Output_Index_Dict:
-            indexes = Output_Index_Dict.get(name)
+        param_or_out = 'output' if name in self.output_index_dict else 'param'
+        if name in self.output_index_dict:
+            indexes = self.output_index_dict.get(name)
         elif name in Param_Index_Dict:
             indexes = Param_Index_Dict.get(name)
         else:
             raise ValueError(f"{name} is not neither input parameter nor output variable")
-
+        name = name.lower()
         match indexes:
             case []:
                 x = cursor.execute(f"SELECT {name} FROM {param_or_out}_global;").fetchone()
@@ -176,7 +177,7 @@ class DAO():
                 query = f"""
                 SELECT {name}
                 FROM {param_or_out}_t 
-                JOIN time AS t ON t_id = t.id
+                JOIN time_step AS t ON t_id = t.id
                 WHERE {name} IS NOT NULL AND t.value ={t};
                 """
                 x = cursor.execute(query).fetchone()
@@ -196,14 +197,14 @@ class DAO():
             case ["CS","T"]:
                 cs, t = indices
                 query = f"""
-                SELECT pct.{name}
+                SELECT {name}
                 FROM {param_or_out}_cs_t
                 JOIN conversion_subprocess AS cs ON cs_id = cs.id
                 JOIN conversion_process AS cp ON cs.cp_id = cp.id
                 JOIN commodity AS cin ON cs.cin_id = cin.id
                 JOIN commodity AS cout ON cs.cout_id = cout.id
                 JOIN time_step AS ts ON t_id = ts.id
-                WHERE {name} IS NOT NULL AND cs.name ='{cs.cp}' AND cin.name ='{cs.cin}' AND cout.name ='{cs.cout}' AND ts.value ={t};
+                WHERE {name} IS NOT NULL AND cp.name ='{cs.cp}' AND cin.name ='{cs.cin}' AND cout.name ='{cs.cout}' AND ts.value ={t};
                 """
                 x = cursor.execute(query).fetchone()
         if param_or_out == 'param':

@@ -1,23 +1,24 @@
 from Core.model import Model
 import gurobipy as gp
-import json
-from pathlib import Path
 from sqlite3 import Connection
-from Core.data_access import CS
+import sqlite3
 from attack.data_access import AttackDAO 
+from attack.params import Attack_Params
+from pathlib import Path
 
 class AttackModel(Model):
-    def __init__(self, conn: Connection) -> None:
+    def __init__(self, conn: Connection, attack_params: Attack_Params) -> None:
         super().__init__(conn)
-        with open(Path(".").joinpath("attack","params.json"), 'r') as f:
-            data = json.load(f)
-            self.attack_params = data["attack_params"]
-            self.PADM_params = data["PADM_params"]
+        
+        # initialize db
+        with open(Path(".").joinpath("attack","init_queries.sql"), 'r') as file:
+            queries = file.read()
+            self.cursor.executescript(queries)
+
+
+        self.attack_params = attack_params
 
         self.dao = AttackDAO(self.conn)
-        
-        self.attack_params.attacked_cs = CS(self.attack_params.attacked_cs)
-        self.attack_params.constrained_cs = CS(self.attack_params.constrained_cs)
         self.model.Params.OutputFlag = 0
         
         self._add_upper_var()
@@ -60,12 +61,12 @@ class AttackModel(Model):
             name = "upper_limits_lb"
         )
         upper_constrs["upper_sum"] = model.addConstr(
-            0 == sum(upper_vars["Upper_vars"][t] * dao.get_row("availability_profile", self.attacked_cs,t) for t in dao.get_set("time")),
+            0 == sum(upper_vars["Upper_vars"][t] * dao.get_row("availability_profile", self.attack_params.attacked_cs,t) for t in dao.get_set("time")),
             name="upper_sum",
         )
         if attack_params.constrained_cs_ineq == '>':
             upper_constrs["upper_cs_limit"] = model.addConstr(
-                sum(vars["Cap_new"][self.constrained_cs,y] for y in dao.get_set("year")) >= attack_params.constrained_cs_newval,
+                sum(vars["Cap_new"][self.attack_params.constrained_cs,y] for y in dao.get_set("year")) >= attack_params.constrained_cs_newval,
                 name = "upper_cs_limit"
             )
         elif attack_params.constrained_cs_ineq == '<':
@@ -74,7 +75,7 @@ class AttackModel(Model):
                 name = "upper_cs_limit"
             )
         else:
-            raise ValueError(f"constrained_cs_ineq {self.constrained_cs_ineq} not recognized")
+            raise ValueError(f"constrained_cs_ineq {self.attack_params.constrained_cs_ineq} not recognized")
 
         # added for absolute value
         upper_constrs["upper_obj"] = model.addConstr(
@@ -106,19 +107,22 @@ class AttackModel(Model):
         else:
             self.upper_constrs["upper_cs_limit"].rhs = self.attack_params.constrained_cs_inactive
     
-    def set_coeff(self):
+    def set_coeff(self, dao: AttackDAO):
         for y in self.dao.get_set("year"):
-            for (cs,t,avail) in self.dao.iter_param("availability_profile"):
-                if cs == self.attacked_cs:
-                    self.model.chgCoeff(self.constrs["re_availability"][y,cs,t], self.vars["Cap_active"][cs,y], -avail * (1+self.dao.get_upper(t)))
+            for (cs,t,avail) in self.dao.iter_row("availability_profile"):
+                if cs == self.attack_params.attacked_cs:
+                    self.model.chgCoeff(self.constrs["re_availability"][y,cs,t], self.vars["Cap_active"][cs,y], -avail * (1+dao.get_row("Upper",t)))
 
     def save_output(self) -> None:
+        for table in ("global","t","y","cs_y","cs_y_t","co_y_t"):
+            query = f""" DELETE FROM output_{table};"""
+            self.cursor.execute(query)
         super().save_output()
         for t in self.dao.get_set("time"):
             query = f"""
             INSERT INTO output_t (t_id, upper)
             SELECT t.id, {self.upper_vars['Upper_vars'][t].X}
-            FROM time AS t 
+            FROM time_step AS t 
             WHERE t.value = {t};
             """
             self.cursor.execute(query)

@@ -56,8 +56,8 @@ class Model():
 
     def _add_constr(self) -> None:
         model = self.model
-        self._constrs = {}
-        constrs = self._constrs # alias for readability
+        self.constrs = {}
+        constrs = self.constrs # alias for readability
         vars = self.vars # alias for readability
         get_row = self.dao.get_row
         iter_row = self.dao.iter_row
@@ -135,9 +135,11 @@ class Model():
         )
         constrs["re_availability"] = model.addConstrs(
             (
-                vars["Pout"][cs,y,t] <= vars["Cap_active"][cs,y] * avail
+                vars["Pout"][cs,y,t] <= vars["Cap_active"][cs,y] * get_row("availability_profile",cs,t)
                 for y in get_set("year")
-                for (cs,t, avail) in iter_row("availability_profile")
+                for cs in get_set("conversion_subprocess")
+                for t in get_set("time")
+                # for (cs,t, avail) in iter_row("availability_profile")
             ),
             name = "re_availability"
         )

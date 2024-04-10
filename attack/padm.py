@@ -1,22 +1,35 @@
 import gurobipy as gp
 from gurobipy import GRB
 from attack.model import AttackModel
-from attack.data_access import Attack_Params, PADM_Params
+from attack.params import Attack_Params, PADM_Params
 import re
 import logging
+import pickle
 from sqlite3 import Connection
-# from attack.params import Attack_Params, PADM_Params
+import sqlite3
 from pathlib import Path
+from attack.data_access import AttackDAO
 
 class PADM():
-    def __init__(self, conn_primal: Connection, conn_padm: Connection, attack_params: Attack_Params) -> None:
+    def __init__(self, conn_padm: Connection, attack_params: Attack_Params) -> None:
         logging.basicConfig(filename=Path(".").joinpath("Logs","log" + PADM.gen_file_name(attack_params) +".log").absolute(), encoding='utf-8', level=logging.DEBUG)     
         self.dual_padm_model = gp.read("dual.lp")
-        # self.dual_padm_model.Params.OutputFlag = 0
+        self.dual_padm_model.Params.OutputFlag = 0
         self.attack_params = attack_params
-        self.primal_padm_model = AttackModel(conn_padm, attack_params)
-        self.primal_model = AttackModel(conn_primal, attack_params)
-        self.primal_model.model.setObjective(self.primal_model.obj)
+        self.conn_padm = conn_padm
+        self.conn_primal_active = sqlite3.connect(":memory:")
+        self.conn_primal_inactive = sqlite3.connect(":memory:")
+        conn_padm.backup(self.conn_primal_active)
+        conn_padm.backup(self.conn_primal_inactive)
+
+        self.primal_padm_model = AttackModel(self.conn_padm, attack_params)
+
+        self.primal_model_active = AttackModel(self.conn_primal_active, attack_params)
+        self.primal_model_inactive = AttackModel(self.conn_primal_inactive, attack_params)
+        self.primal_model_active.model.setObjective(self.primal_model_active.obj)
+        self.primal_model_inactive.model.setObjective(self.primal_model_inactive.obj)
+        self.primal_model_active.activate_upper_limit(True)
+        self.primal_model_inactive.activate_upper_limit(False)
 
         self.vars = {"primal":[], "dual":[], "upper":[]} # the dictionary of the all variables of the model (primal, dual , upper and ...) and type of the values is always gp.MVar   
         self.constrs = {} 
@@ -24,10 +37,10 @@ class PADM():
 
         self.constrs["fix"] = {}
         self.vars["dual"] = gp.MVar.fromlist(self.dual_padm_model.getVars())
-        # self.vars["primal"] = gp.MVar.fromlist(GeneralModel.flatten(primal_padm_model.vars))
-        # self.vars["upper"] = gp.MVar.fromlist(GeneralModel.flatten(primal_padm_model.upper_vars))
-        # self.constrs["primal"] = GeneralModel.flatten(primal_padm_model.constrs)
-        # self.constrs["upper"] = GeneralModel.flatten(primal_padm_model.upper_constrs)
+        self.vars["primal"] = gp.MVar.fromlist(PADM.flatten(self.primal_padm_model.vars))
+        self.vars["upper"] = gp.MVar.fromlist(PADM.flatten(self.primal_padm_model.upper_vars))
+        self.constrs["primal"] = PADM.flatten(self.primal_padm_model.constrs)
+        self.constrs["upper"] = PADM.flatten(self.primal_padm_model.upper_constrs)
         
         self.dual_vars_dict = self.get_dual_vars(attack_params)
 
@@ -38,59 +51,53 @@ class PADM():
 
     @staticmethod
     def gen_file_name(attack_params: Attack_Params):
-        return(f"_a_{str(attack_params.attacked_cs)}_c_{str(attack_params.constrained_cs)}_{str(attack_params.constrained_cs_newval)}")
-    
-    # @staticmethod
-    # def flatten(element_dict):
-    #     element_list = []
-    #     for value in element_dict.values():
-    #         if isinstance(value, gp.tupledict):
-    #             element_list.extend(value.values())
-    #         elif isinstance(value, gp.Var) or isinstance(value, gp.Constr):
-    #             element_list.append(value)
-    #         else:
-    #             print(type(value))
-    #             # print(value.index)
-    #             print("type is not compatible")
-    #             # raise ValueError("the type of the value is not supported")
-    #     return element_list
+        return(f"_a_{str(attack_params.attacked_cs.cp)}_c_{str(attack_params.constrained_cs.cp)}_{str(attack_params.constrained_cs_newval)}")
 
-    def set_coeff(self) -> None:
+    @staticmethod
+    def flatten(element_dict):
+        element_list = []
+        for value in element_dict.values():
+            if isinstance(value, gp.tupledict):
+                element_list.extend(value.values())
+            elif isinstance(value, gp.Var) or isinstance(value, gp.Constr):
+                element_list.append(value)
+            else:
+                print(type(value))
+                # print(value.index)
+                print("type is not compatible")
+                # raise ValueError("the type of the value is not supported")
+        return element_list
+
+    def set_coeff(self, dao: AttackDAO) -> None:
         """sets the coefficient of the upper level variables in the primal problem (fixed lower-level variables)
 
         :param output: _description_
         :type output: dtcls.Output
         """
-        dao = self.primal_padm_model.dao
         for y in dao.get_set("year"):
-            for (cs,t,avail) in dao.iter_param("availability_profile"):
+            for (cs,t,avail) in dao.iter_row("availability_profile"):
                 if cs == self.primal_padm_model.attack_params.attacked_cs:
                     self.primal_padm_model.model.chgCoeff(self.primal_padm_model.constrs["re_availability"][y,cs,t], self.primal_padm_model.upper_vars["Upper_vars"][t],- dao.get_row("Cap_active",cs,y) * avail)
 
     def get_dual_vars(self, attack_params) -> dict:  
         vars = {}
+        dao = self.primal_model_active.dao
         main_re = re.compile(rf"re_availability\(Year\(_valuee(?P<year>[0-9]+)\),\(ConversionProcess\(_valuee'{attack_params.attacked_cs.cp}'\),Commodity\(_valuee'Dummy'\),Commodity\(_valuee'Electricity'\)\),Time\(_valuee(?P<time>[0-9]+)\)\)#[0-9]+")
         for var in self.vars["dual"].tolist():
             m = main_re.match(var.VarName)
             if m: 
                 year_value = int(m.group("year"))
                 time_value = int(m.group("time"))
-                dataset = self.primal_padm_model.data.dataset
-                for y in dataset.years:
-                    if y._value == year_value:
+                for y in dao.get_set("year"):
+                    if y == year_value:
                         year = y
                         break
-                for t in dataset.times:
-                    if t._value == time_value:
+                for t in dao.get_set("time"):
+                    if t == time_value:
                         time = t
                         break
                 vars[(year, time)] = var
         return vars
-
-    def print_upper_vars(self):
-        dao = self.primal_padm_model.dao
-        for t in dao.get_set("time"):
-            print(f"t:{t._value}, {self.primal_padm_model.upper_vars['Upper_vars'][t].X}")
         
     def fix_vars(self, name: str, fix_value:float|None = None) -> None:
         model = self.primal_padm_model.model
@@ -123,19 +130,17 @@ class PADM():
         self.primal_padm_model.model.setObjective(self.obj[name], sense)
         self.primal_padm_model.model.update()
     
-    def set_primal_obj(self, mu: float) -> None:
+    def set_primal_obj(self, mu: float, dao: AttackDAO) -> None:
         dual_expr = self.get_obj_value("dual")
-        cs = self.primal_padm_model.attacked_cs
-        dao = self.primal_padm_model.dao
+        cs = self.attack_params.attacked_cs
         for t in dao.get_set("time"):
             for y in dao.get_set("year"):
                 dual_expr += - self.primal_padm_model.upper_vars["Upper_vars"][t] * self.dual_vars_dict[y,t].X * dao.get_row("Cap_active",cs,y) * dao.get_row("availability_profile",cs,t)
         expr = self.obj["upper"] + mu * (self.obj["primal"] - dual_expr)
         self.primal_padm_model.model.setObjective(expr ,GRB.MINIMIZE)
     
-    def set_dual_obj(self) -> None:
-        cs = self.primal_padm_model.attacked_cs
-        dao = self.primal_padm_model.dao
+    def set_dual_obj(self, dao: AttackDAO) -> None:
+        cs = self.attack_params.attacked_cs
         expr = 0 + self.obj["dual"]
         for t in dao.get_set("time"):
             for y in dao.get_set("year"):
@@ -174,10 +179,6 @@ class PADM():
         else:
             output = get_val(self.vars[name])
         return output
-
-# class Control():
-#     def __init__(self, conn_primal: Connection, conn_) -> None:
-#         self.conn = conn
         
     @staticmethod
     def diff_values(a: dict[str,list[float]], b: dict[str,list[float]]) -> float:
@@ -186,29 +187,13 @@ class PADM():
             if abs(a[i] - b[i]) > max_diff:
                 max_diff = abs(a[i] - b[i])
         return max_diff
-        
-#     def primal_model_method(self) -> None:
-#         gm = GeneralModel(self.conn)
-#         gm.fix_vars("upper", 0)
-#         gm.set_obj("primal")
-#         gm.primal_padm_model.activate_upper_limit(False)
-#         gm.primal_padm_model.model.optimize()
-#         output = gm.attacked_model.get_output()
-#         return(output)
-    
-#     def dual_model(self) -> None:
-#         gm = GeneralModel(self.conn)
-#         gm.dual_padm_model.optimize()
-#         print("DUAL:  ")
-#         print(gm.obj["dual"].getValue())
 
-    def PADM_attack(self, PADM_params: PADM_Params) -> None:
-        # gm = GeneralModel(self.conn, attack_params)
+    def attack(self, PADM_params: PADM_Params) -> None:
         self.primal_padm_model.model.setObjective(self.obj["primal"])
-        
         self.fix_vars("upper", 0)
-        print("############ solve initial model ############")
+        logging.info("############ solve initial model ############")
         self.primal_padm_model.solve()
+        self.primal_padm_model.save_output()
         self.dual_padm_model.setObjective(self.obj["dual"], GRB.MAXIMIZE)
         self.dual_padm_model.optimize()
         self.relax_vars("upper")
@@ -243,26 +228,29 @@ class PADM():
                 j += 1
                 logging.info(f"j = {j}")
                 old_upper_values = self.get_MVar_values("upper")
-                output_delta = self.primal_padm_model.get_output()
-                self.primal_model.set_coeff(output_delta)
-                self.primal_model.activate_upper_limit(False)
+                # output_delta = self.primal_padm_model.get_output()
+                self.primal_model_inactive.set_coeff(self.primal_padm_model.dao)
+                self.primal_model_active.set_coeff(self.primal_padm_model.dao)
+                # self.primal_model.activate_upper_limit(False)
                 logging.info("############ solve dual ############")
-                self.primal_model.solve()
+                self.primal_model_inactive.solve()
+                self.primal_model_inactive.save_output()
                 # save cap_active
-                cap_active_dual = self.primal_model.get_output().power.Cap_active
-                cap_active_dual = {y:cap_active_dual[cs,y] for (cs,y) in cap_active_dual if cs == self.primal_model.attacked_cs}
+                cap_active_dual = self.primal_model_inactive.dao.iter_row("Cap_active")
+                cap_active_dual = {y:value for (cs,y,value) in cap_active_dual if cs == self.attack_params.attacked_cs}
 
-                dual_obj_value = self.primal_model.model.getObjective().getValue()
+                dual_obj_value = self.primal_model_inactive.model.getObjective().getValue()
                 logging.info(f"dual obj: , {dual_obj_value}")
-                output_dual = self.primal_model.get_output()
-                self.primal_model.activate_upper_limit(True)
+                # output_dual = self.primal_model.get_output()
+                # self.primal_model.activate_upper_limit(True)
                 logging.info("############ solve primal ############")
-                self.primal_model.solve()
+                self.primal_model_active.solve()
+                self.primal_model_active.save_output()
                 # save cap_active
-                cap_active_primal = self.primal_model.get_output().power.Cap_active
-                cap_active_primal = {y:cap_active_primal[cs,y] for (cs,y) in cap_active_primal if cs == self.primal_model.attacked_cs}
+                cap_active_primal = self.primal_model_active.dao.iter_row("Cap_active")
+                cap_active_primal = {y:value for (cs,y,value) in cap_active_primal if cs == self.attack_params.attacked_cs}
                 
-                primal_obj_value = self.primal_model.model.getObjective().getValue()
+                primal_obj_value = self.primal_model_active.model.getObjective().getValue()
                 logging.info(f"primal obj: , {primal_obj_value}")
                 if abs(primal_obj_value - dual_obj_value) < PADM_params.penalty_error:
                     break_flag = True
@@ -270,15 +258,15 @@ class PADM():
                 if break_flag:    
                     save_algorithm_state()
                     break
-                output_primal = self.primal_model.get_output()
-                self.set_coeff(output_primal)
+                self.set_coeff(self.primal_model_active.dao)
                 k = 0 # inner loop counter
                 while True:
                     k += 1
                     logging.info(f"k = {k}")
                     logging.info("####### solve primal #######")
-                    self.set_primal_obj(mu, output_dual)
+                    self.set_primal_obj(mu, self.primal_model_inactive.dao)
                     self.primal_padm_model.solve()
+                    self.primal_padm_model.save_output()
                     logging.info(f"primal obj: , {self.get_obj_value('primal')}")
                     logging.info(f"real dual: , {self.get_obj_value('dual_real')}")
                     logging.info(f"dual obj: , {self.get_obj_value('dual')}")
@@ -286,7 +274,7 @@ class PADM():
                     new_primal_values = self.get_MVar_values("primal")
                     new_upper_values = self.get_MVar_values("upper")
                     logging.info("####### solve dual #######")
-                    self.set_dual_obj(output_dual)
+                    self.set_dual_obj(self.primal_model_inactive.dao)
                     self.dual_padm_model.optimize()
                     logging.info(f"primal obj: , {self.get_obj_value('primal')}")
                     logging.info(f"real dual: , {self.get_obj_value('dual_real')}")
@@ -311,9 +299,12 @@ class PADM():
                     if diff < PADM_params.stationary_error or k >= PADM_params.max_stationary_iter:
                         break
             mu *= PADM_params.increase_factor
-        export = {"output": self.primal_padm_model.get_output(), "input": self.primal_model.data}
-        with open(Path(".").joinpath("Runs","DEModel_V2-Base-attack","input_output" + PADM.gen_file_name(self.attack_params) +".pkl"), "wb") as f:
-            pickle.dump(export,f)
+        self.primal_padm_model.save_output()
+
+        # export = {"output": self.primal_padm_model.get_output(), "input": self.primal_model.data}
+        # with open(Path(".").joinpath("Runs","DEModel_V2-Base-attack","input_output" + PADM.gen_file_name(self.attack_params) +".pkl"), "wb") as f:
+        #     pickle.dump(export,f)
         with open(Path(".").joinpath("Runs","DEModel_V2-Base-attack","algorithm" + PADM.gen_file_name(self.attack_params) +".pkl"), "wb") as f:
             pickle.dump(algorithm_dict,f)
+
 
