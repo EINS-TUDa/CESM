@@ -14,6 +14,7 @@ class AttackModel(Model):
         with open(Path(".").joinpath("attack","init_queries.sql"), 'r') as file:
             queries = file.read()
             self.cursor.executescript(queries)
+            self.conn.commit()
 
 
         self.attack_params = attack_params
@@ -126,3 +127,4 @@ class AttackModel(Model):
             WHERE t.value = {t};
             """
             self.cursor.execute(query)
+        self.conn.commit()

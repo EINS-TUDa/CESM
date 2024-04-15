@@ -36,7 +36,6 @@ for file_path in [primal_path, padm_path]:
 
 # conn_primal = sqlite3.connect(primal_path)
 conn_padm = sqlite3.connect(padm_path)
-# Parser("DEModel_V2",techmap_dir_path=techmap_dir_path, ts_dir_path=ts_dir_path ,db_conn=conn_primal ,scenario = "Base").parse()
 Parser("DEModel_V2",techmap_dir_path=techmap_dir_path, ts_dir_path=ts_dir_path ,db_conn=conn_padm ,scenario = "Base").parse()
 
 attack_params = Attack_Params(

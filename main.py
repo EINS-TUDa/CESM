@@ -27,9 +27,8 @@ else:
     print("File does not exist:", file_path)
 
 db_path = db_dir_path.joinpath("db.sqlite")
-conn = sqlite3.connect(db_path)
+conn = sqlite3.connect(":memory:")
 parser = Parser("DEModel_V2",techmap_dir_path=techmap_dir_path, ts_dir_path=ts_dir_path ,db_conn=conn ,scenario = "Base")
-
 print("### parsing started ###")
 parser.parse()
 print("### parsing finished ###")
@@ -37,9 +36,10 @@ print("### parsing finished ###")
 
 print("#### building model started ###")
 model = Model(conn)
+model.model.write("primal.lp")
 print("#### building model finished ###")
 
-
+# raise ValueError("stop")
 print("#### solving model started ###")
 model.solve()
 print("#### solving model finished ###")
@@ -55,3 +55,5 @@ plotter = Plotter(dao=dao)
 # # fig.write_image("images/fig1.pdf")
 plotter.plot_bars(PlotType.Bar.PRIMARY_ENERGY,commodity="Electricity")
 plotter.plot_timeseries(PlotType.TimeSeries.POWER_CONSUMPTION, year=2020, commodity="Electricity")
+conn_file= sqlite3.connect(db_path)
+conn.backup(conn_file)

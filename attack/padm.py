@@ -82,7 +82,7 @@ class PADM():
     def get_dual_vars(self, attack_params) -> dict:  
         vars = {}
         dao = self.primal_model_active.dao
-        main_re = re.compile(rf"re_availability\(Year\(_valuee(?P<year>[0-9]+)\),\(ConversionProcess\(_valuee'{attack_params.attacked_cs.cp}'\),Commodity\(_valuee'Dummy'\),Commodity\(_valuee'Electricity'\)\),Time\(_valuee(?P<time>[0-9]+)\)\)#[0-9]+")
+        main_re = re.compile(rf"re_availability\((?P<year>[0-9]+),CS\(cpe'{self.attack_params.attacked_cs.cp}',cine'Dummy',coute'Electricity'\),(?P<time>[0-9]+)\)#[0-9]+")
         for var in self.vars["dual"].tolist():
             m = main_re.match(var.VarName)
             if m: 

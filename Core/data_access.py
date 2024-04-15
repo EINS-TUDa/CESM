@@ -10,6 +10,9 @@ class CS(NamedTuple):
     cin: str
     cout: str
 
+    def __repr__(self) -> str:
+        return f"CS(cp='{self.cp}',cin='{self.cin}',cout='{self.cout}')"
+
 # Data Access Object
 class DAO():
     def __init__(self, conn : Connection) -> None:
