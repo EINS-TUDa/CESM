@@ -13,7 +13,7 @@ from attack.params import PADM_Params, Attack_Params
 import sqlite3
 
 # make Logs folder if it doesn't exist
-Path('./Runs/DEModel_V2-Base-attack').mkdir(parents=True, exist_ok=True)
+Path('./Runs/DEModel_V2-Base').mkdir(parents=True, exist_ok=True)
 Path('./Logs').mkdir(parents=True, exist_ok=True)
 
 

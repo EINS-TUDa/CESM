@@ -213,15 +213,26 @@ class PADM():
             j = 0
             while True:
                 def save_algorithm_state():
-                    cap_active = {}
-                    cap_active["dual"] = cap_active_dual
-                    cap_active["primal"] = cap_active_primal
-                    obj = {}
-                    obj["upper"] = self.get_obj_value('upper')
-                    obj["primal"] = primal_obj_value
-                    obj["dual"] = dual_obj_value
-                    algorithm_dict["cap_active"].append(cap_active)
-                    algorithm_dict["obj"].append(obj)
+                    dao = self.primal_padm_model.dao
+                    # cap_active = {}
+                    # cap_active["dual"] = cap_active_dual
+                    # cap_active["primal"] = cap_active_primal
+                    # obj = {}
+                    # obj["upper"] = self.get_obj_value('upper')
+                    # obj["primal"] = primal_obj_value
+                    # obj["dual"] = dual_obj_value
+                    # algorithm_dict["cap_active"].append(cap_active)
+                    # algorithm_dict["obj"].append(obj)
+                    self.primal_padm_model.cursor.execute(f"INSERT INTO output_alg (iter_num, obj_upper, obj_primal, obj_dual) VALUES ({i},{self.get_obj_value('upper')},{primal_obj_value},{dual_obj_value})")
+                    for y in dao.get_set("year"):
+                        self.primal_padm_model.cursor.execute(f"""
+                                INSERT INTO output_alg_y (iter_num, y_id, cap_active_primal, cap_active_dual) 
+                                SELECT {i},y.id,{cap_active_primal.get(y,0)},{cap_active_dual.get(y,0)}
+                                FROM year AS y
+                                WHERE y.value = {y};
+                            """)
+                    self.primal_padm_model.conn.commit()
+
                 break_flag = False
                 if j > 0 and self.diff_values(upper_level_values, old_upper_values) < PADM_params.stationary_error:
                     break_flag = True 
@@ -304,7 +315,7 @@ class PADM():
         # export = {"output": self.primal_padm_model.get_output(), "input": self.primal_model.data}
         # with open(Path(".").joinpath("Runs","DEModel_V2-Base-attack","input_output" + PADM.gen_file_name(self.attack_params) +".pkl"), "wb") as f:
         #     pickle.dump(export,f)
-        with open(Path(".").joinpath("Runs","DEModel_V2-Base-attack","algorithm" + PADM.gen_file_name(self.attack_params) +".pkl"), "wb") as f:
-            pickle.dump(algorithm_dict,f)
+        # with open(self.parent_dir.joinpath("algorithm" + PADM.gen_file_name(self.attack_params) +".pkl"), "wb") as f:
+        #     pickle.dump(algorithm_dict,f)
 
 

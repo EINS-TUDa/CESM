@@ -35,7 +35,7 @@ class Parser:
 
 
         # Read queries from the .sql file
-        with open(Path(".").joinpath("Core","db","init_queries.sql"), 'r') as file:
+        with open(Path(".").joinpath("Core","init_queries.sql"), 'r') as file:
             queries = file.read()
 
         # Execute the queries
