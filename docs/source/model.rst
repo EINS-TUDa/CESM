@@ -124,7 +124,7 @@ Costs
 
 :eq:`capex_eq` capital cost consists of CO2 cost and capital investment.
 
-.. math:: OPEX = \sum_{cs\in CS}\sum_{y\in Y} Cap\_active[cs,y] * opex\_cost\_power[cs,y] + Eouttot[cs,y] * opex\_cost\_energy[cs,y]
+.. math:: OPEX = \sum_{cs\in CS}\sum_{i \in (1,\ldots,|Y|)} \left( Cap\_active[cs,Y[i]] * opex\_cost\_power[cs,Y[i]] + Eouttot[cs,Y[i]] * opex\_cost\_energy[cs,Y[i]] \right) * \left( Y[i+1]-Y[i]\quad \text{if} \quad i<|Y| \quad \text{else} \quad 1 \right)
     :label: opex_eq
 
 :eq:`opex_eq` operational cost consists of cost per active unit of capacity and cost per unit of generation.
