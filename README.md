@@ -44,13 +44,6 @@ or build it yourself:
 Then you can open the documentation from *docs/build/html/index.html*.
 ## Quick Start
 
-## Generate Dual
-```console 
-> read "<primal.mps full_path>"
-> write dual.dua
-> read  dual.dua
-> write dual.lp
-```
 
 
 ## Authors
