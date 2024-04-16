@@ -76,7 +76,7 @@ CREATE TABLE IF NOT EXISTS param_cs (
     cs_id INTEGER,
     spec_co2 FLOAT,
     efficiency FLOAT,
-    technical_lifetime FLOAT,
+    technical_lifetime INTEGER,
     technical_availability FLOAT,
     c_rate FLOAT,
     efficiency_charge FLOAT,

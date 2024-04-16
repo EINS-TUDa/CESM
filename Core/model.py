@@ -227,7 +227,7 @@ class Model():
 
         constrs["cap_active"] = model.addConstrs(
             (
-                vars["Cap_active"][cs,y] == vars["Cap_res"][cs,y] + sum(vars["Cap_new"][cs,yy] for yy in get_set("year") if int(yy) in range(y-int(get_row("technical_lifetime",cs)), y+1))
+                vars["Cap_active"][cs,y] == vars["Cap_res"][cs,y] + sum(vars["Cap_new"][cs,yy] for yy in get_set("year") if yy in range(y-get_row("technical_lifetime",cs)+1, y+1))
                 for y in get_set("year")
                 for cs in get_set("conversion_subprocess")
             ),
