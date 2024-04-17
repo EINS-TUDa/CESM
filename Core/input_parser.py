@@ -12,7 +12,7 @@ import scipy.interpolate
 from collections import namedtuple
 from Core.params import Param_Index_Dict
 import json
-
+import pkg_resources
 
 
 class Parser:
@@ -33,9 +33,9 @@ class Parser:
 
         self.param_index_dict = Param_Index_Dict
 
-
+        file_path = pkg_resources.resource_filename('cesm', 'Core/init_queries.sql')
         # Read queries from the .sql file
-        with open(Path(".").joinpath("Core","init_queries.sql"), 'r') as file:
+        with open(file_path, 'r') as file:
             queries = file.read()
 
         # Execute the queries

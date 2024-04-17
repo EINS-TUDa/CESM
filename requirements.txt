@@ -9,3 +9,4 @@ click
 InquirerPy
 SQLAlchemy
 pyarrow
+sqlite3
