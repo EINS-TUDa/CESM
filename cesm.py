@@ -33,27 +33,9 @@ def get_existing_models():
       files = [file.name for file in TECHMAP_DIR_PATH.glob("*") if file.is_file()]
       return [tm.split('.')[0] for tm in files if tm.endswith('.xlsx')]
 
-# class ModelChoice(click.Choice):
-#     def convert(self, value, param, ctx):
-#          try:
-#                return super().convert(value, param, ctx)
-#          except click.exceptions.BadParameter:
-#                # print each model in one line   
-#                available_models = '\n\t '.join(get_existing_models())
-#                raise click.BadParameter(f"Model {value} not found.\n \tAvailable models are:\n\t {available_models}")
-
 def get_runs():
    """Return a list of existing runs"""
    return [entry.name for entry in RUNS_DIR_PATH.iterdir() if entry.is_dir()]
-
-# class RunsChoice(click.Choice):
-#    def convert(self, value, param, ctx):
-#       try:
-#          return super().convert(value, param, ctx)
-#       except click.exceptions.BadParameter:
-#          # print each model in one line   
-#          available_runs = '\n\t '.join(get_runs())
-#          raise click.BadParameter(f"Run {value} not found.\n \tComputed model runs are:\n\t {available_runs}")
 
 def get_list_inquirer_choices(choices, name=None, message=None, type='list'):
    """Return a dict of choices in the format required by PyInquirer"""
@@ -82,8 +64,6 @@ def app():
    """Welcome to the Compact Energy System Modelling Tool (CESM)"""
 
 @app.command(name='run')
-# @click.option("--model_name",'-m', type=ModelChoice(get_existing_models()))
-# @click.option("--scenario",'-s', type=click.STRING)
 def run():
    """Run the Model"""
    # print(f'Running model {model_name} with scenario {scenario}')
@@ -102,13 +82,11 @@ def run():
    # Create and Run the model
    conn = sqlite3.connect(":memory:")
    parser = Parser(model_name, techmap_dir_path=TECHMAP_DIR_PATH, ts_dir_path=TS_DIR_PATH, db_conn = conn, scenario = scenario)
-   # (self, name, techmap_dir_path, ts_dir_path, db_conn, scenario)
 
    # Parse
    print("\n#-- Parsing started --#")
    st = time.time()
    parser.parse()
-   # model_input = parser.get_input()
    print(f"Parsing finished in {time.time()-st:.2f} seconds")
 
    # Build
@@ -138,9 +116,6 @@ def run():
    disk_db_conn = sqlite3.connect(db_path)
    conn.backup(disk_db_conn)
    
-
-   
-   # save_input_output(input=model_input, output=model_output,filename=os.path.join(path, FNAME_MODEL))
    print(f"Saving model finished in {time.time()-st:.2f} seconds")
      
 @app.command(name='plot')
