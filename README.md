@@ -11,22 +11,36 @@ An example of the German energy system is also provided. The results of the mode
 ![image description](images/plot.png)
 
 ## Installation
-Download and Install the following software from their official websites:
-- python (10 or above)
-- Gurobi
+1. Download and install the following software from their official websites:
+   - Python (version 3.10 or above)
+   - Gurobi
 
-### Install Python Packages
-1. Make a virtual environment:
+2. Set up a virtual environment:
+   ```console
+   > python -m venv env
+   > env\Scripts\activate
+
+3. Install CESM package:
 ```console
-> python -m venv env
-> env\Scripts\activate
+> pip install --upgrade cesm
 ```
 
-2. Install packages:
+
+4. Initialize the data files structure:
 ```console
-> pip install -r requirements.txt
+> cesm init
+```
+## Quick Start
+Run the available models located in the Data folder using the following command:
+```console
+> cesm run
 ```
 
+After the run is finished, plot the results with the following command:
+```console
+> cesm plot
+```
+These steps will help you quickly set up and start using the Compact Energy System Modelling Tool (CESM).
 
 ## Documentation
 You can find our documentation [online](https://cesm.readthedocs.io/en/latest/)
@@ -42,8 +56,6 @@ or build it yourself:
 ```
 
 Then you can open the documentation from *docs/build/html/index.html*.
-## Quick Start
-
 
 
 ## Authors
