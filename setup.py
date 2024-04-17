@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='cesm',
-    version='0.0.1',
+    version='v0.0.1alpha.0',
     packages=find_packages(),
     package_data={
         'cesm': ['Data/*'],
