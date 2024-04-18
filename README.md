@@ -21,25 +21,25 @@ An example of the German energy system is also provided. The results of the mode
    > env\Scripts\activate
 
 3. Install CESM package:
-```console
-> pip install --upgrade cesm
-```
+	```console
+	> pip install --upgrade cesm
+	```
 
 
 4. Initialize the data files structure:
-```console
-> cesm init
-```
+	```console
+	> cesm init
+	```
 ## Quick Start
 Run the available models located in the Data folder using the following command:
-```console
-> cesm run
-```
+	```console
+	> cesm run
+	```
 
 After the run is finished, plot the results with the following command:
-```console
-> cesm plot
-```
+	```console
+	> cesm plot
+	```
 These steps will help you quickly set up and start using the Compact Energy System Modelling Tool (CESM).
 
 ## Documentation
@@ -47,13 +47,13 @@ You can find our documentation [online](https://cesm.readthedocs.io/en/latest/)
 or build it yourself:
 
 1. Install documentation requirements:
-```console 
-> pip install -r docs\requirements.txt
-```
+	```console 
+	> pip install -r docs\requirements.txt
+	```
 2. Make build documentation:
-```console
-> docs\make html
-```
+	```console
+	> docs\make html
+	```
 
 Then you can open the documentation from *docs/build/html/index.html*.
 
