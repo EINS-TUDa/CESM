@@ -19,6 +19,6 @@ To visualize the results of a simulation, use the following command:
 
 .. code-block:: console
 
-   > python cesm.py plot
+   > cesm plot
 
 You'll be prompted for the model name, scenario, plot type, and variable to plot.
