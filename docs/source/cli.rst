@@ -1,17 +1,23 @@
 CLI(Command Line Interface)
 ============================
-You can use run and visualize the results with CLI, without writting any piece of code. The results of each simulation are stored in the ``Runs`` directory. To run the model with  CLI you have to use the following command:
+
+This command structures the directories and initial files necessary for the software to run.
 
 .. code-block:: console
 
-   > python cesm.py run
+   > cesm init
 
-then it asks for the model that you want to run and the name of the scenario. 
+You can run and visualize the results using the CLI without writing any code. The results of each simulation are stored in the ``Runs`` directory. To run the model with CLI, use the following command:
+.. code-block:: console
 
-To visualize the results of a simulation you have to use the following command:
+   > cesm run
+
+The CLI will prompt for the model you want to run and the name of the scenario.
+
+To visualize the results of a simulation, use the following command:
 
 .. code-block:: console
 
    > python cesm.py plot
 
-Then it asks for the name of the model, the scenario, the type of the plot and the variable to plot.
+You'll be prompted for the model name, scenario, plot type, and variable to plot.
