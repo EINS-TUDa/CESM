@@ -8,6 +8,7 @@ This command structures the directories and initial files necessary for the soft
    > cesm init
 
 You can run and visualize the results using the CLI without writing any code. The results of each simulation are stored in the ``Runs`` directory. To run the model with CLI, use the following command:
+
 .. code-block:: console
 
    > cesm run
