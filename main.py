@@ -13,12 +13,12 @@ from Core.data_access import DAO
 import sqlite3
 
 
-model_name = "DEModel_V2" # model name
+model_name = "DEModel" # model name
 
 techmap_dir_path = Path(".").joinpath("Data", "Techmap")
 ts_dir_path = Path(".").joinpath("Data", "TimeSeries")
-db_dir_path = Path(".").joinpath("Runs", "DEModel_V2-Base")
-file_path = Path(".").joinpath("Runs", "DEModel_V2-Base", "db.sqlite")
+db_dir_path = Path(".").joinpath("Runs", "DEModel-Base")
+file_path = Path(".").joinpath("Runs", "DEModel-Base", "db.sqlite")
 if file_path.exists():
     # Delete the file using unlink()
     file_path.unlink()
@@ -28,7 +28,7 @@ else:
 
 db_path = db_dir_path.joinpath("db.sqlite")
 conn = sqlite3.connect(":memory:")
-parser = Parser("DEModel_V2",techmap_dir_path=techmap_dir_path, ts_dir_path=ts_dir_path ,db_conn=conn ,scenario = "Base")
+parser = Parser("DEModel",techmap_dir_path=techmap_dir_path, ts_dir_path=ts_dir_path ,db_conn=conn ,scenario = "Base")
 print("### parsing started ###")
 parser.parse()
 print("### parsing finished ###")
