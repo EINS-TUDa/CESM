@@ -164,9 +164,9 @@ Power output
 :eq:`max_power_out_eq` The output is limited by the capacity of the conversion subprocess.
 
 .. math:: Pout[cs,y,t] \leq Cap\_active[cs,y] * technical\_availability[cs] \quad  \forall y\in Y,\forall t\in T, \forall cs\in CS
-    :label: re_availability_eq
+    :label: technical_availability_eq
 
-:eq:`technical_availability_eq` The Generation of renewable energy is limited by the availability profile.
+:eq:`technical_availability_eq` Energy generation is limited by the technical availability.
 
 .. math:: Pout[cs,y,t] \leq Cap\_active[cs,y] * availability\_profile[cs,t] \quad  \forall y\in Y,\forall t\in T, \forall cs\in CS \setminus SCS
     :label: re_availability_eq
