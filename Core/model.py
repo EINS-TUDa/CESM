@@ -7,7 +7,7 @@ Date: 10.10.2023
 
 import gurobipy as gp
 from gurobipy import GRB
-from Core.data_access import DAO
+from core.data_access import DAO
 from sqlite3 import Connection
 
 

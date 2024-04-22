@@ -10,8 +10,7 @@ import pandas as pd
 import numpy as np
 import scipy.interpolate
 from collections import namedtuple
-from Core.params import Param_Index_Dict
-import json
+from core.params import Param_Index_Dict
 import pkg_resources
 
 

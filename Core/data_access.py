@@ -3,7 +3,7 @@ from pandas import DataFrame
 from itertools import chain
 from typing import NamedTuple
 from functools import lru_cache
-from Core.params import Param_Index_Dict, Output_Index_Dict, Param_Default_Dict
+from core.params import Param_Index_Dict, Output_Index_Dict, Param_Default_Dict
 
 class CS(NamedTuple):
     cp: str

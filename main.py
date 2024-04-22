@@ -5,11 +5,11 @@ Author: Sina Hajikazemi
 Date: 18.10.2023
 """
 
-from Core.input_parser import Parser
+from core.input_parser import Parser
 from pathlib import Path
-from Core.model import Model
-from Core.plotter import Plotter, PlotType
-from Core.data_access import DAO
+from core.model import Model
+from core.plotter import Plotter, PlotType
+from core.data_access import DAO
 import sqlite3
 
 

@@ -13,10 +13,10 @@ import pkg_resources
 from InquirerPy import prompt
 
 # -- internal imports -- #
-from Core.input_parser import Parser
-from Core.model import Model
-from Core.plotter import Plotter, PlotType
-from Core.data_access import DAO
+from core.input_parser import Parser
+from core.model import Model
+from core.plotter import Plotter, PlotType
+from core.data_access import DAO
 import sqlite3
 
 # Constants
