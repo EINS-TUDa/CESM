@@ -181,11 +181,11 @@ def plot():
 def initialize():
    print("Initializing CESM...")
    RUNS_DIR_PATH.mkdir(exist_ok=True)
-   if not DATA_DIR_PATH.exists():
-      DATA_DIR_PATH.mkdir()
-      data_folder_path = pkg_resources.resource_filename('cesm', 'Data')
-      copy_tree(data_folder_path, str(Path(".").joinpath("Data").absolute()))
-   print("Data files are successfully structured.")
+   # if not DATA_DIR_PATH.exists():
+   #    DATA_DIR_PATH.mkdir()
+   #    data_folder_path = pkg_resources.resource_filename('cesm', 'Data')
+   #    copy_tree(data_folder_path, str(Path(".").joinpath("Data").absolute()))
+   # print("Data files are successfully structured.")
 
 if __name__ == "__main__":
    app()

@@ -20,17 +20,25 @@ An example of the German energy system is also provided. The results of the mode
    > python -m venv env
    > env\Scripts\activate
 
-3. Install CESM package:
+3. Clone the repository:
 	```console
-	> pip install --upgrade cesm
+	> git clone https://github.com/EINS-TUDa/CESM.git
+	```
+4. Change the directory to the repository:
+	```console
+	> cd CESM
 	```
 
+5. Install the package:
+	```console
+	> pip install -e .
+	```
 
-4. Initialize the data files structure:
+## Quick Start
+Initialize the Runs directory:
 	```console
 	> cesm init
 	```
-## Quick Start
 Run the available models located in the Data folder using the following command:
 	```console
 	> cesm run
