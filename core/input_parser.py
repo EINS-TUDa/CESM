@@ -32,7 +32,7 @@ class Parser:
 
         self.param_index_dict = Param_Index_Dict
 
-        file_path = pkg_resources.resource_filename('cesm', 'Core/init_queries.sql')
+        file_path = pkg_resources.resource_filename('cesm', 'core/init_queries.sql')
         # Read queries from the .sql file
         with open(file_path, 'r') as file:
             queries = file.read()

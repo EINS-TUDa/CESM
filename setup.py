@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='cesm',
-    version='0.0.8',
+    version='0.0.9',
     packages=find_packages(),
     description='Compact Energy System Modeling Tool (CESM)',
     long_description="""
@@ -13,7 +13,7 @@ The optimal output of the model determines how much should be invested in each p
 An example of the German energy system is also provided. The results of the model are compatible with the results of the paper "Barbosa, Julia, Christopher Ripp, and Florian Steinke. Accessible Modeling of the German Energy Transition: An Open, Compact, and Validated Model. Energies 14, no. 23 (2021)"
     """,
     package_data={
-        'cesm': ['Data/*'],
+        '': ['Data/*'],
     },
     long_description_content_type='text/markdown',
     py_modules=['cesm'],  # Assuming cesm.py is in the root of your package directory
