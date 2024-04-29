@@ -35,16 +35,17 @@ An example of the German energy system is also provided. The results of the mode
 	```
 
 ## Quick Start
-Initialize the Runs directory:
+1. Initialize the Runs directory:
 	```console
 	> cesm init
 	```
-Run the available models located in the Data folder using the following command:
+
+2. Run the available models located in the Data folder using the following command:
 	```console
 	> cesm run
 	```
 
-After the run is finished, plot the results with the following command:
+3. After the run is finished, plot the results with the following command:
 	```console
 	> cesm plot
 	```
