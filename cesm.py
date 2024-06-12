@@ -147,7 +147,7 @@ def plot():
          commodities = prompt_commodities(dao)
          # Combination
          for p in plots:
-            if p == 'PRIMARY_ENERGY':
+            if p in  ['PRIMARY_ENERGY', 'CO2_EMISSION']:
                plotter.plot_bars(getattr(p_type, p))
             else:
                for c in commodities:

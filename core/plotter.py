@@ -26,7 +26,7 @@ class Bar(Enum):
    NEW_CAPACITY = 4 
    CO2_EMISSION = 5
    PRIMARY_ENERGY = 6
-   CO2_PRICE = 7
+   # CO2_PRICE = 7
 
 class SingleValue(Enum):
 
@@ -176,15 +176,15 @@ class Plotter:
 
       if bar_type == PlotType.Bar.CO2_EMISSION:
          data = get_as_dataframe("Total_annual_co2_emission")
-         title = f"CO2 Emission for {commodity}"
+         title = f"Total Annual CO2 Emission"
          stacks = None
          yaxis = "CO2 [t]"
 
-      elif bar_type == PlotType.Bar.CO2_PRICE:
-         data = get_as_dataframe("co2_price")
-         title = f"CO2 Price"
-         stacks = None
-         yaxis = "Price [€/t]"
+      # elif bar_type == PlotType.Bar.CO2_PRICE:
+      #    data = get_as_dataframe("co2_price")
+      #    title = f"CO2 Price"
+      #    stacks = None
+      #    yaxis = "Price [€/t]"
 
 
       elif bar_type == PlotType.Bar.PRIMARY_ENERGY:
@@ -339,6 +339,8 @@ class Plotter:
       )
    
    def _get_color(self, name:str):
+      if name == "Unique":
+         return _rand_hex_color()
       if self._colors_orders[name]["color"] is None:
          self._colors_orders[name]["color"] = _rand_hex_color()
       return self._colors_orders[name]["color"]
