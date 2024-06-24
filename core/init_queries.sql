@@ -45,16 +45,11 @@ CREATE TABLE IF NOT EXISTS conversion_subprocess (
 -- Create the 'unit' table
 CREATE TABLE IF NOT EXISTS unit (
     id INTEGER PRIMARY KEY,
-    power FLOAT,
-    energy FLOAT,
-    co2_emissions FLOAT,
-    cost_energy FLOAT,
-    cost_power FLOAT,
-    co2_spec FLOAT,
-    money FLOAT,
-    -- Add a column that holds a constant value
-    constant_column INTEGER DEFAULT 1,
-    CONSTRAINT only_one_row UNIQUE (constant_column)
+    quantity TEXT,
+    scale_factor FLOAT,
+    input TEXT,
+    output TEXT,
+    CONSTRAINT unique_quantity UNIQUE (quantity)
 );
 
 

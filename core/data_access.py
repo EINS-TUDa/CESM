@@ -56,6 +56,10 @@ class DAO():
                 raise Exception(f"Key {k} not found in DataFrame! Existing keys: {df.columns}")
         return df
 
+    def get_units(self):
+        unit_rows = self.cursor.execute(f"""SELECT quantity, output FROM unit""").fetchall()
+        return {quantity:output for (quantity, output) in unit_rows}
+    
     def get_plot_settings(self):
         co_rows = self.cursor.execute(f"""SELECT name, plot_color, plot_order FROM commodity""").fetchall()
         cp_rows = self.cursor.execute(f"""SELECT name, plot_color, plot_order FROM conversion_process""").fetchall()

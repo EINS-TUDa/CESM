@@ -70,6 +70,7 @@ class Plotter:
    def __init__(self, dao:DAO):
       self.dao = dao
       self.get_as_dataframe = dao.get_as_dataframe
+      self.units = dao.get_units()
 
       self.plot_setings = dict(
          font_family="Knuth's Computer Modern",
@@ -152,7 +153,7 @@ class Plotter:
       
       # Create Figure
       traces = go.Bar(x=list(data.keys()), y=list(data.values()))
-      layout = self._get_default_layout(title="Costs", yaxistitle="Costs [€]")
+      layout = self._get_default_layout(title="Costs", yaxistitle=f"Cost [{self.units['money']}]")
       fig = go.Figure(data=traces, layout=layout)
       fig.show()
 
@@ -178,7 +179,7 @@ class Plotter:
          data = get_as_dataframe("Total_annual_co2_emission")
          title = f"Total Annual CO2 Emission"
          stacks = None
-         yaxis = "CO2 [t]"
+         yaxis = f"CO2 [{self.units['co2_emissions']}]"
 
       # elif bar_type == PlotType.Bar.CO2_PRICE:
       #    data = get_as_dataframe("co2_price")
@@ -190,7 +191,7 @@ class Plotter:
       elif bar_type == PlotType.Bar.PRIMARY_ENERGY:
          data = get_as_dataframe("Eouttot", cin="Dummy")
          title = f"Primary Energy Use"
-         yaxis = "Energy [MWh]"
+         yaxis = f"Energy [{self.units['energy']}]"
       
       else:
          # Check if commodity is set
@@ -201,19 +202,19 @@ class Plotter:
          elif bar_type == PlotType.Bar.ENERGY_CONSUMPTION:
             data = get_as_dataframe("Eintot", cin=commodity)
             title = f"Energy Consumption for {commodity}"
-            yaxis = "Energy [MWh]"
+            yaxis = f"Energy [{self.units['energy']}]"
          elif bar_type == PlotType.Bar.ENERGY_PRODUCTION:
             data = get_as_dataframe("Eouttot", cout=commodity)
             title = f"Energy Production for {commodity}"
-            yaxis = "Energy [MWh]"
+            yaxis = f"Energy [{self.units['energy']}]"
          elif bar_type == PlotType.Bar.ACTIVE_CAPACITY:
             data = get_as_dataframe("Cap_active", cout=commodity)
             title = f"Active Capacity for {commodity}"
-            yaxis = "Power [MW]"
+            yaxis = f"Power [{self.units['power']}]"
          elif bar_type == PlotType.Bar.NEW_CAPACITY:
             data = get_as_dataframe("Cap_new", cout=commodity)
             title = f"New Capacity for {commodity}"
-            yaxis = "Power [MW]"
+            yaxis = f"Power [{self.units['power']}]"
          else:
             raise PlotterExeption("Invalid type for plotting!")
 
@@ -242,22 +243,22 @@ class Plotter:
       if timeseries_type == PlotType.TimeSeries.ENERGY_CONSUMPTION:
          data = get_as_dataframe("Eintime", cin=commodity, Year=year)
          title = f"Energy Consumption for {commodity} in {year}"
-         yaxis = "Energy [MWh]"
+         yaxis = f"Energy [{self.units['energy']}]"
       
       elif timeseries_type == PlotType.TimeSeries.ENERGY_PRODUCTION:
          data = get_as_dataframe("Eouttime", cout=commodity, Year=year)
          title = f"Energy Production for {commodity} in {year}"
-         yaxis = "Energy [MWh]"
+         yaxis = f"Energy [{self.units['energy']}]"
      
       elif timeseries_type == PlotType.TimeSeries.POWER_CONSUMPTION:
          data = get_as_dataframe("Pin", cin=commodity, Year=year)
          title = f"Power Consumption for {commodity} in {year}"
-         yaxis = "Power [MW]"
+         yaxis = f"Power [{self.units['power']}]"
       
       elif timeseries_type == PlotType.TimeSeries.POWER_PRODUCTION:
          data = get_as_dataframe("Pout", cout=commodity, Year=year)
          title = f"Power Production for {commodity} in {year}"
-         yaxis = "Power [MW]"
+         yaxis = f"Power [{self.units['power']}]"
 
       else:
          raise PlotterExeption("Invalid type for plotting!")

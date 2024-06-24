@@ -56,7 +56,13 @@ class Parser:
     def read_units (self, tmap) -> None:
         df = pd.read_excel(tmap,"Units")
         self.units = dict(zip(df["quantity"].str.strip(),df["scale_factor"]))
-        self.cursor.execute(f"INSERT INTO unit ({','.join(self.units.keys())}) VALUES (?,?,?,?,?,?,?);",list(self.units.values()))
+        # self.cursor.execute(f"INSERT INTO unit ({','.join(self.units.keys())}) VALUES (?,?,?,?,?,?,?);",list(self.units.values()))
+        for _,row in df.iterrows():
+            self.cursor.execute('''
+                INSERT INTO unit (quantity, scale_factor, input, output)
+                VALUES (?, ?, ?, ?)
+                ON CONFLICT(quantity) DO NOTHING
+            ''', (row["quantity"], row["scale_factor"], row["input"], row["output"]))
         self.conn.commit()
     
     def _scale(self, p_name, value) -> float:
