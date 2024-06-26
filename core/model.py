@@ -334,8 +334,8 @@ class Model():
         constrs["energy_balance"] = model.addConstrs(
             (
                 vars["E_storage_level"][cs,y,t] == vars["E_storage_level"][cs,y,get_set("time")[get_set("time").index(t)-1]]  
-                + vars["Pin"][cs,y,t] * get_row("dt","global") * get_row("efficiency_charge",cs) 
-                - vars["Pout"][cs,y,t] * get_row("dt","global") / get_row("efficiency",cs) 
+                + vars["Pin"][cs,y,t] * get_row("dt") * get_row("efficiency_charge",cs) 
+                - vars["Pout"][cs,y,t] * get_row("dt") / get_row("efficiency",cs) 
                 for y in get_set("year")
                 for t in get_set("time")
                 for cs in get_set("storage_cs")
