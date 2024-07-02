@@ -147,12 +147,14 @@ def plot():
       plots = prompt(get_list_inquirer_choices(p_type.__members__, name='plot', type='checkbox', message='Please choose plots: Select with spacebar and confirm with enter'))['plot']
       
       if plot_type == 'Bar':
-         commodities = prompt_commodities(dao)
          # Combination
+         commodities = None
          for p in plots:
             if p in  ['PRIMARY_ENERGY', 'CO2_EMISSION']:
                plotter.plot_bars(getattr(p_type, p))
             else:
+               if commodities is None:
+                  commodities = prompt_commodities(dao)
                for c in commodities:
                   plotter.plot_bars(getattr(p_type, p), commodity=c)
 
