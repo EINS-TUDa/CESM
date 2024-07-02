@@ -67,7 +67,6 @@ class Model():
         constrs["totex"] = model.addConstr(vars["TOTEX"] == vars["CAPEX"] + vars["OPEX"], name="totex")
         constrs["capex"] = model.addConstr(
                 vars["CAPEX"] == sum(self.dao.get_discount_factor(y)*(
-                    get_row("co2_price",y) * vars["Total_annual_co2_emission"][y] +
                     sum(vars["Cap_new"][cs,y] * get_row("capex_cost_power",cs, y) for cs in get_set("conversion_subprocess"))
                 ) 
                 for y in get_set("year")),
@@ -82,7 +81,7 @@ class Model():
                 return get_set("year")[index+1] - y
         model.addConstr(
             vars["OPEX"] == sum(
-                (vars["Cap_active"][cs,y] *  get_row("opex_cost_power",cs,y) + vars["Eouttot"][cs,y] * get_row("opex_cost_energy",cs,y)) * (year_gap(y)) * self.dao.get_discount_factor(y)
+                (vars["Cap_active"][cs,y] *  get_row("opex_cost_power",cs,y) + vars["Eouttot"][cs,y] * get_row("opex_cost_energy",cs,y)+ get_row("co2_price",y) * vars["Total_annual_co2_emission"][y]) * (year_gap(y)) * self.dao.get_discount_factor(y)
                 for cs in get_set("conversion_subprocess") 
                 for y in get_set("year")
             ),
