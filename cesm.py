@@ -76,6 +76,9 @@ def run():
 
    # Create a directory for the model if it does not exist
    db_dir_path = RUNS_DIR_PATH.joinpath(model_name+'-'+scenario)
+   if not RUNS_DIR_PATH.exists():
+     os.mkdir(RUNS_DIR_PATH)
+   
    if not os.path.exists(db_dir_path):
       os.mkdir(db_dir_path)
 
