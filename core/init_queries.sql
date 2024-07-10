@@ -159,6 +159,7 @@ CREATE TABLE IF NOT EXISTS output_cs_y (
     eouttot FLOAT,
     eintot FLOAT,
     e_storage_level_max FLOAT,
+    dis_salvage_value FLOAT, 
     FOREIGN KEY (cs_id) REFERENCES conversion_subprocess(id),
     FOREIGN KEY (y_id) REFERENCES year(id),
     CONSTRAINT cs_y_unique UNIQUE (cs_id, y_id)
