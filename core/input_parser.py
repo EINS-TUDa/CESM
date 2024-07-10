@@ -252,6 +252,11 @@ class Parser:
             f = lambda x: vals[0] if x == yy[0] else np.nan  
         return f
 
+    @staticmethod
+    def pre_check_scenarios(name, techmap_dir_path):
+        tmap = pd.ExcelFile(techmap_dir_path.joinpath(f"{name}.xlsx"))
+        df = pd.read_excel(tmap,"Scenario")
+        return df["scenario_name"].to_list()
 
 if __name__ == '__main__':
     techmap_dir_path = Path(".").joinpath("Data", "Techmap")

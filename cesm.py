@@ -72,7 +72,11 @@ def run():
    # if model_name is None:
    model_name = prompt(get_list_inquirer_choices(get_existing_models(), name='model_name', message='Please choose a model to run'))['model_name']
    # if scenario is None:
-   scenario = click.prompt('Please enter a scenario name', type=click.STRING)
+   #scenario = click.prompt('Please enter a scenario name', type=click.STRING)
+   scenario_choices = Parser.pre_check_scenarios(model_name, techmap_dir_path=TECHMAP_DIR_PATH)
+   scenario = prompt(get_list_inquirer_choices(scenario_choices, name='scenario', message='Please choose a scenario to run'))['scenario']
+
+
 
    # Create a directory for the model if it does not exist
    db_dir_path = RUNS_DIR_PATH.joinpath(model_name+'-'+scenario)
