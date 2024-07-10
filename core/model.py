@@ -31,7 +31,9 @@ class Model():
         vars["TOTEX"] = model.addVar(name="TOTEX")
         vars["CAPEX"] = model.addVar(name="CAPEX")
         vars["OPEX"] = model.addVar(name="OPEX")
-        
+        vars["TotalSalvageValue"] = model.addVar(name="SalvageValue")
+        vars["DiscountedSalvageValue"] = model.addVars(get_set("conversion_subprocess"), get_set("year"), name="DiscountedSalvageValue")
+
         # CO2
         vars["Total_annual_co2_emission"] = model.addVars(get_set("year"), name="Total_annual_co2_emission")
         
@@ -79,6 +81,7 @@ class Model():
             else:
                 index = get_set("year").index(y)
                 return get_set("year")[index+1] - y
+       
         model.addConstr(
             vars["OPEX"] == sum(
                 (vars["Cap_active"][cs,y] *  get_row("opex_cost_power",cs,y) + vars["Eouttot"][cs,y] * get_row("opex_cost_energy",cs,y)+ get_row("co2_price",y) * vars["Total_annual_co2_emission"][y]) * (year_gap(y)) * self.dao.get_discount_factor(y)
@@ -87,7 +90,33 @@ class Model():
             ),
             name = "opex"
         )
-        
+
+        # Salvage Value
+        def salvage_value_rule(cs,y):
+            last_year = get_set("year")[-1]
+            #discount_rate = get_row("discount_rate") 
+            salvage_value =  vars["Cap_new"][cs,y]* get_row("capex_cost_power",cs,y)*(1-(last_year-y)/get_row("technical_lifetime",cs))
+            discounted_salvage_value = salvage_value * self.dao.get_discount_factor(last_year)
+            return discounted_salvage_value
+            
+        model.addConstrs(
+            (
+                vars["DiscountedSalvageValue"][cs,y] == salvage_value_rule(cs,y)
+                for cs in get_set("conversion_subprocess")
+                for y in get_set("year")
+                if (get_set("year")[-1] - y) < get_row("technical_lifetime",cs)
+            ),
+            name = "salvage_value"
+        )
+
+
+        model.addConstr(
+            vars["TotalSalvageValue"] == sum(vars["DiscountedSalvageValue"][cs,y] 
+                                             for cs in get_set("conversion_subprocess") for y in get_set("year") 
+                                            if (get_set("year")[-1] - y) < get_row("technical_lifetime",cs)),
+            name = "total_salvage_value"
+        )
+
         # Power Balance
         nondummy_commodities = {co for co in get_set("commodity") if co != "Dummy"}
         constrs["power_balance"] = model.addConstrs(
@@ -351,9 +380,12 @@ class Model():
             name = "c_rate_relation"
         )
 
-        model.setObjective(vars["TOTEX"]+0, GRB.MINIMIZE)
+        model.setObjective(vars["TOTEX"]+ 0- vars["TotalSalvageValue"]  
+                           , GRB.MINIMIZE)
 
     def solve(self) -> None:
+        self.model.setParam(GRB.Param.Crossover, 0)
+        self.model.setParam(GRB.BarConvTol, 1e-7)
         return self.model.optimize()
     
     def save_output(self) -> None:
@@ -378,10 +410,11 @@ class Model():
                 eouttot = vars['Eouttot'][cs,y].X
                 eintot = vars['Eintot'][cs,y].X
                 e_storage_level_max =  vars['E_storage_level_max'][cs,y].X
-                if any(item != 0 for item in (cap_new, cap_active, cap_res, eouttot, eintot, e_storage_level_max)):
+                dis_salvage_value = vars['DiscountedSalvageValue'][cs,y].X
+                if any(item != 0 for item in (cap_new, cap_active, cap_res, eouttot, eintot, e_storage_level_max, dis_salvage_value)):
                     query = f"""
-                    INSERT INTO output_cs_y (cs_id, y_id, cap_new, cap_active, cap_res, eouttot, eintot, e_storage_level_max)  
-                    SELECT cs.id, y.id, {cap_new}, {cap_active}, {cap_res}, {eouttot}, {eintot}, {e_storage_level_max}
+                    INSERT INTO output_cs_y (cs_id, y_id, cap_new, cap_active, cap_res, eouttot, eintot, e_storage_level_max, dis_salvage_value)  
+                    SELECT cs.id, y.id, {cap_new}, {cap_active}, {cap_res}, {eouttot}, {eintot}, {e_storage_level_max}, {dis_salvage_value}
                     FROM conversion_subprocess AS cs
                     JOIN conversion_process AS cp ON cs.cp_id = cp.id
                     JOIN commodity AS cin ON cs.cin_id = cin.id
