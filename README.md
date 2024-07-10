@@ -44,6 +44,11 @@ An example of the German energy system is also provided. The results of the mode
 	```console
 	> cesm run
 	```
+	
+	If you know the specific model to be run, you can alternatively use:
+	```console
+	> cesm run -m $MODEL_NAME -s $SCENARIO
+	``` 
 
 3. After the run is finished, plot the results with the following command:
 	```console

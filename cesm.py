@@ -31,6 +31,8 @@ def get_existing_models():
       """Return a list of existing models"""
       # files = os.listdir(TECHMAP_DIR_PATH)
       files = [file.name for file in TECHMAP_DIR_PATH.glob("*") if file.is_file()]
+      # remove files that start with ~ since they are temporary xlxs files
+      files = [tm for tm in files if not tm.startswith('~')]
       return [tm.split('.')[0] for tm in files if tm.endswith('.xlsx')]
 
 def get_runs():
@@ -64,18 +66,29 @@ def app():
    """Welcome to the Compact Energy System Modelling Tool (CESM)"""
 
 @app.command(name='run')
-def run():
+@click.option('--model_name', '-m', help='Name of the model to run', default=None)
+@click.option('--scenario', '-s', help='Name of the scenario to run', default=None)
+def run(model_name, scenario):
    """Run the Model"""
+
    # print(f'Running model {model_name} with scenario {scenario}')
 
-   # If no scenario or model is provided, prompt the user to choose one
-   # if model_name is None:
-   model_name = prompt(get_list_inquirer_choices(get_existing_models(), name='model_name', message='Please choose a model to run'))['model_name']
-   # if scenario is None:
-   #scenario = click.prompt('Please enter a scenario name', type=click.STRING)
-   scenario_choices = Parser.pre_check_scenarios(model_name, techmap_dir_path=TECHMAP_DIR_PATH)
-   scenario = prompt(get_list_inquirer_choices(scenario_choices, name='scenario', message='Please choose a scenario to run'))['scenario']
+   # Validate model name and scenario. In case not provided or invalid, prompt the user to choose
+   if model_name is not None and model_name not in get_existing_models():
+      click.secho(f"Invalid Mordel argument. Model {model_name} does not exist.", fg="red")
+      model_name = None
 
+   if model_name is None:
+      model_name = prompt(get_list_inquirer_choices(get_existing_models(), name='model_name', message='Please choose a model to run'))['model_name']
+   
+
+   if scenario is not None and scenario not in Parser.pre_check_scenarios(model_name, techmap_dir_path=TECHMAP_DIR_PATH):
+      click.secho(f"Invalid Scenario argument. Scenario {scenario} does not exist.", fg="red")
+      scenario = None
+   
+   if scenario is None:
+      scenario_choices = Parser.pre_check_scenarios(model_name, techmap_dir_path=TECHMAP_DIR_PATH)
+      scenario = prompt(get_list_inquirer_choices(scenario_choices, name='scenario', message='Please choose a scenario to run'))['scenario']
 
 
    # Create a directory for the model if it does not exist
