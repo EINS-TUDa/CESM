@@ -384,8 +384,10 @@ class Model():
                            , GRB.MINIMIZE)
 
     def solve(self) -> None:
-        self.model.setParam(GRB.Param.Crossover, 0)
-        self.model.setParam(GRB.Param.BarConvTol, 1e-7)
+        self.model.Params.Crossover = 0
+        self.model.Params.Method = 2 # Barrier https://www.gurobi.com/documentation/current/refman/method.html 
+        self.model.Params.BarConvTol = 1e-6
+        #self.model.setParam(GRB.Param.BarConvTol, 1e-7)
         return self.model.optimize()
     
     def save_output(self) -> None:
