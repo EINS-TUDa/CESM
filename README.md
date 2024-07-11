@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="images/logo.svg" width="250" height="200" alt="Logo">
+  <img src="images/CESM_Logo.png" width="250" height="250" alt="Logo">
 </p>
 
 # Compact Energy System Modeling Tool (CESM)
