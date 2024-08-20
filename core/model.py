@@ -70,8 +70,8 @@ class Model():
         constrs["capex"] = model.addConstr(
                 vars["CAPEX"] == sum(self.dao.get_discount_factor(y)*(
                     sum(vars["Cap_new"][cs,y] * get_row("capex_cost_power",cs, y) for cs in get_set("conversion_subprocess"))
-                ) 
-                for y in get_set("year")),
+                )
+                for y in get_set("year")) - vars["TotalSalvageValue"],
                 name = "capex"
             )
         
@@ -95,7 +95,7 @@ class Model():
         def salvage_value_rule(cs,y):
             last_year = get_set("year")[-1]
             #discount_rate = get_row("discount_rate") 
-            salvage_value =  vars["Cap_new"][cs,y]* get_row("capex_cost_power",cs,y)*(1-(last_year-y)/get_row("technical_lifetime",cs))
+            salvage_value =  vars["Cap_new"][cs,y]* get_row("capex_cost_power",cs,y)*(1-(last_year-y+1)/get_row("technical_lifetime",cs))
             discounted_salvage_value = salvage_value * self.dao.get_discount_factor(last_year)
             return discounted_salvage_value
             
@@ -380,8 +380,7 @@ class Model():
             name = "c_rate_relation"
         )
 
-        model.setObjective(vars["TOTEX"]+ 0- vars["TotalSalvageValue"]  
-                           , GRB.MINIMIZE)
+        model.setObjective(vars["TOTEX"]+ 0, GRB.MINIMIZE)
 
     def solve(self) -> None:
         self.model.Params.Crossover = 0
