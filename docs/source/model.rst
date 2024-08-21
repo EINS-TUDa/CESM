@@ -46,6 +46,8 @@ Capacity
 - :math:`cap\_res\_max(CS,Y)`: maximum residual capacity of the conversion subprocess :math:`cs` at year :math:`y`. Dimension: Power. Range = Non-negative. default = 0. 
 - :math:`cap\_res\_min(CS,Y)`: minimum residual capacity of the conversion subprocess :math:`cs` at year :math:`y`. Dimension: Power. Range = Non-negative. default = 0. 
 
+Residual capacity is the remaining capacity from before the planning period. The parameters :math:`cap\_res\_max(CS,Y)` and :math:`cap\_res\_min(CS,Y)` define the upper and lower limit for the active capacity from this remaining capacity.
+
 Technology
 ~~~~~~~~~~
 - :math:`efficiency(CS)`: output efficiency of conversion subprocess :math:`cs`. Dimension: -. Range: Non-negative. default = 1.
@@ -71,7 +73,7 @@ For `out\_frac\_min(CS,Y)` and `out\_frac\_max(CS,Y)` see :ref:`CHP <CHP>` examp
 
 Storage
 ~~~~~~~
-- :math:`c\_rate(CS)`: indicates the discharge and charging rate of the storage conversion subprocess :math:`cs`. 2C means that the full storage can be fully discharged in (1 hour)/2=30 minutes. Range: Positive. Dimension: Power. 
+- :math:`c\_rate(CS)`: indicates the discharge and charging rate of the storage conversion subprocess :math:`cs`. 2C means that the full storage can be fully discharged in (1 hour)/2=30 minutes. Range: Positive. Dimension: 1/Time. 
 - :math:`efficiency\_charge(CS)`: Storage charging efficiency of conversion subprocess :math:`cs`. Dimension: -. Range = (0,1]. default = 1. 
 
 Variables
@@ -83,6 +85,8 @@ Costs
 - :math:`TOTEX`: Total Expenditure. Dimension: Money.
 - :math:`CAPEX`: Capital Expenditure. Dimension: Money.
 - :math:`OPEX`: Operational Expenditure. Dimension: Money.
+- :math:`TotalSalvageValue`: Total Salvage Value. Dimension: Money.
+- :math:`DiscountedSalvageValue(CS,Y)`: Discounted Salvage Value of conversion subprocess :math:`cs` in year :math:`y`. Dimension: Money.
 
 CO2
 ~~~
@@ -119,15 +123,20 @@ Costs
 .. math:: TOTEX = CAPEX + OPEX
     :label: totex_eq
 
-.. math:: CAPEX = \sum_{y \in Y} \left(co2\_price[y] * Total\_annual\_co2\_emission[y]  + discount\_factor[y] * \sum_{cs \in CS} \left(Cap\_new[cs, y] * capex\_cost\_power[cs,y]\right)\right)
+.. math:: CAPEX = \sum_{y \in Y} \left(co2\_price[y] * Total\_annual\_co2\_emission[y]  + discount\_factor[y] * \sum_{cs \in CS} \left(Cap\_new[cs, y] * capex\_cost\_power[cs,y]\right)\right) - TotalSalvageValue
     :label: capex_eq
 
 :eq:`capex_eq` capital cost consists of CO2 cost and capital investment.
 
-.. math:: OPEX = \sum_{cs\in CS}\sum_{i \in (1,\ldots,|Y|)} \left( Cap\_active[cs,Y[i]] * opex\_cost\_power[cs,Y[i]] + Eouttot[cs,Y[i]] * opex\_cost\_energy[cs,Y[i]] \right) * \left( Y[i+1]-Y[i]\quad \text{if} \quad i<|Y| \quad \text{else} \quad 1 \right)
+.. math:: OPEX = \sum_{cs\in CS}\sum_{i \in (1,\ldots,|Y|)} discount\_factor[Y[i]] * \left( Cap\_active[cs,Y[i]] * opex\_cost\_power[cs,Y[i]] + Eouttot[cs,Y[i]] * opex\_cost\_energy[cs,Y[i]] \right) * \left( Y[i+1]-Y[i]\quad \text{if} \quad i<|Y| \quad \text{else} \quad 1 \right)
     :label: opex_eq
 
 :eq:`opex_eq` operational cost consists of cost per active unit of capacity and cost per unit of generation.
+
+.. math:: DiscountedSalvageValue[cs,y] =  Cap\_new[cs,y]* capex\_cost\_power[cs,y]*(1-(Y[-1]-y+1)/technical\_lifetime[cs]) * discount\_factor[y] \quad \forall y\in Y,\forall cs\in CS
+
+.. math:: TotalSalvageValue = \sum_{cs\in CS} \sum_{y \in Y} DiscountedSalvageValue[cs,y] \quad \text{if} \quad Y[|Y|] - y < technical\_lifetime[cs]
+    :label: total_salvage
 
 Power Balance
 ~~~~~~~~~~~~~

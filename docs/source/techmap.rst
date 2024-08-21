@@ -32,8 +32,8 @@ Tabs
     * TSS_name: the name of the time series selection.
     * description: the description of the time series selection. It is used for the documentation.
     * dt: the time step of the simulation.
-
-
+    TSS files contains the index of time steps which are considered in the formulation. The index starts from 1. For example if it contains 1,2,3,11,12,13 then six time steps are considered in the formulation.
+    It also tells that the 1st, 2nd, 3rd, 11th, 12th, 13th elements of the time dependent input data, that is provided in a text file, are considered in the formulation.
 
 
 Time Dependent Parameters
