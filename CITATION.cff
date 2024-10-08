@@ -5,6 +5,10 @@ cff-version: 1.2.0
 title: Compact Energy System Modeling Tool (CESM)
 message: '"If you use this software, please cite it as below."'
 type: software
+identifiers:
+  - type: doi
+    value: 10.5281/zenodo.13902515
+version: 0.0.9
 authors:
   - given-names: Sina
     family-names: Hajikazemi
@@ -24,7 +28,6 @@ abstract: >-
   invested in each part of the energy system to meet the
   energy demand and minimize costs.
 
-
   An example of the German energy system is also provided.
   The results of the model are compatible with the results
   of the paper "Barbosa, Julia, Christopher Ripp, and
@@ -35,6 +38,3 @@ keywords:
   - Energy
   - Planning
 license: MIT
-identifiers:
-  - type: doi
-    value: 10.5281/zenodo.13902515
