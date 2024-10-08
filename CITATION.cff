@@ -35,3 +35,6 @@ keywords:
   - Energy
   - Planning
 license: MIT
+identifiers:
+  - type: doi
+    value: 10.5281/zenodo.13902515
