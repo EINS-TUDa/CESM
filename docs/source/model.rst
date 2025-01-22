@@ -270,7 +270,7 @@ Storage
 .. math:: Pin[cs,t,y] \leq Cap\_active[cs, y] \quad \forall y\in Y, \forall t\in T, \forall cs\in SCS
     :label: charge_power_limit
 
-.. math:: E\_storage\_level[cs,t,y] = E\_storage\_level[cs, t-1, y] + efficiency\_charge[cs] * Pin[cs, t,y] * dt * w- (Pout[cs,t,y]*dt*w)/(efficiency[cs]) \quad \forall y\in Y, \forall t\in T, \forall cs\in SCS
+.. math:: E\_storage\_level[cs,t,y] = E\_storage\_level[cs, t-1, y] + efficiency\_charge[cs] * Pin[cs, t,y] * dt - (Pout[cs,t,y]*dt)/(efficiency[cs]) \quad \forall y\in Y, \forall t\in T, \forall cs\in SCS
     :label: storage_energy_balance
 
 .. math:: E\_storage\_level\_max[cs, y] = Cap\_active[cs, y]/c\_rate[cs] \quad \forall y\in Y, \forall cs\in SCS
