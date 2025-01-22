@@ -264,6 +264,7 @@ Generation
 Storage
 ~~~~~~~
 
+
 .. math:: E\_storage\_level[cs,t,y] \leq E\_storage\_level\_max[cs,y] \quad \forall y\in Y, \forall t\in T, \forall cs\in SCS
     :label: strorage_energy_limit
 
