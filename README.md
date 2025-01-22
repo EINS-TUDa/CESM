@@ -12,6 +12,8 @@ An example of the German energy system is also provided. The results of the mode
 
 ![image description](images/plot.png)
 
+**Doucmentation**: [https://cesm.readthedocs.io](https://cesm.readthedocs.io) 
+
 ## Installation
 1. Download and install the following software from their official websites:
    - Python (version 3.10 or above)
