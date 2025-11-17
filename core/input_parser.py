@@ -70,12 +70,16 @@ class Parser:
             return value * self.units["cost_energy"]
         if p_name in ("opex_cost_power","capex_cost_power"):
             return value * self.units["cost_power"]
+        if p_name in ("capex_cost_base",):
+            return value * self.units["cost_power"]
         if p_name in ("spec_co2",):
             return value * self.units["co2_spec"]
         if p_name in ("max_eout", "min_eout"):
             return value * self.units["energy"]
-        if p_name in ("cap_min", "cap_max", "cap_res_min", "cap_res_max"):
+        if p_name in ("cap_min", "cap_max", "cap_res_min", "cap_res_max", "cap_active"):
             return value * self.units["power"]
+        if p_name in ("max_units",):
+            return value
         else:
             return value
     
@@ -205,9 +209,15 @@ class Parser:
                                 ts = np.array(ts)
                                 ts = ts[[x.value for x in tss]]
                                      
-                            #Potentential normalization
+                            # Potential normalization
                             if p_name in ["output_profile"]:
-                                ts = ts/sum(ts)
+                                total = float(sum(ts))
+                                if total:
+                                    ts = ts / total
+                                    remainder = 1.0
+                                    for value in ts[:-1]:
+                                        remainder -= float(value)
+                                    ts[-1] = float(max(0.0, remainder))
                             # insert to database
                             for i,time_step in enumerate(tss):
                                 try:
