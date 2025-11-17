@@ -43,6 +43,32 @@ class Model():
         vars["Cap_res"] = model.addVars(get_set("conversion_subprocess"), get_set("year"), name="Cap_res")
         vars["Pin"] = model.addVars(get_set("conversion_subprocess"), get_set("year"), get_set("time"), name="Pin")
         vars["Pout"] = model.addVars(get_set("conversion_subprocess"), get_set("year"), get_set("time"), name="Pout")
+        self.max_units_limits = {}
+        build_ub = {}
+        for cs in get_set("conversion_subprocess"):
+            raw_limit = self.dao.get_row("max_units", cs)
+            try:
+                limit_val = int(round(float(raw_limit))) if raw_limit is not None else 1
+            except Exception:
+                limit_val = 1
+            if limit_val <= 0:
+                limit_val = 1
+            self.max_units_limits[cs] = limit_val
+            for y in get_set("year"):
+                build_ub[(cs, y)] = limit_val
+
+        vars["Build"] = model.addVars(
+            get_set("conversion_subprocess"),
+            get_set("year"),
+            vtype=GRB.INTEGER,
+            ub=build_ub,
+            name="Build",
+        )
+
+        for cs, limit_val in self.max_units_limits.items():
+            if limit_val == 1:
+                for y in get_set("year"):
+                    vars["Build"][cs, y].vtype = GRB.BINARY
 
         # Energy
         vars["Eouttot"] = model.addVars(get_set("conversion_subprocess"), get_set("year"), name="Eouttot")
@@ -67,13 +93,79 @@ class Model():
 
         # Costs
         constrs["totex"] = model.addConstr(vars["TOTEX"] == vars["CAPEX"] + vars["OPEX"], name="totex")
-        constrs["capex"] = model.addConstr(
-                vars["CAPEX"] == sum(self.dao.get_discount_factor(y)*(
-                    sum(vars["Cap_new"][cs,y] * get_row("capex_cost_power",cs, y) for cs in get_set("conversion_subprocess"))
-                )
-                for y in get_set("year")) - vars["TotalSalvageValue"],
-                name = "capex"
+        capex_terms = gp.quicksum(
+            self.dao.get_discount_factor(y)
+            * (
+                vars["Cap_new"][cs, y] * get_row("capex_cost_power", cs, y)
+                + vars["Build"][cs, y] * get_row("capex_cost_base", cs, y)
             )
+            for cs in get_set("conversion_subprocess")
+            for y in get_set("year")
+        )
+
+        constrs["capex"] = model.addConstr(
+            vars["CAPEX"] == capex_terms - vars["TotalSalvageValue"],
+            name="capex",
+        )
+
+        def _cap_new_limit(cs, y):
+            cap_limit = get_row("cap_max", cs, y)
+            if cap_limit is None or cap_limit <= 0:
+                cap_limit = get_row("cap_res_max", cs, y)
+            if cap_limit is None or cap_limit <= 0:
+                cap_limit = 1e6
+            return cap_limit
+
+        constrs["build_activation"] = model.addConstrs(
+            (
+                vars["Cap_new"][cs, y] <= _cap_new_limit(cs, y) * vars["Build"][cs, y]
+                for y in get_set("year")
+                for cs in get_set("conversion_subprocess")
+            ),
+            name="build_activation",
+        )
+
+        def _cap_min_limit(cs, y):
+            cap_min = get_row("cap_min", cs, y)
+            if cap_min is None or cap_min <= 0:
+                return None
+            return cap_min
+
+        def _cap_unit_size(cs, y):
+            cap_max = get_row("cap_max", cs, y)
+            if cap_max is not None and cap_max > 0:
+                return cap_max
+            cap_min = _cap_min_limit(cs, y)
+            if cap_min is not None:
+                return cap_min
+            return None
+
+        unit_size_rows = [
+            (cs, y, size)
+            for cs in get_set("conversion_subprocess")
+            for y in get_set("year")
+            if (size := _cap_unit_size(cs, y)) is not None
+        ]
+
+        if unit_size_rows:
+            # Lock Cap_new to discrete unit sizes so each Build pays the per-unit base CAPEX.
+            constrs["build_unit_size"] = model.addConstrs(
+                (
+                    vars["Cap_new"][cs, y] == size * vars["Build"][cs, y]
+                    for cs, y, size in unit_size_rows
+                ),
+                name="build_unit_size",
+            )
+
+        constrs["build_min_activation"] = model.addConstrs(
+            (
+                vars["Cap_new"][cs, y] >= _cap_min_limit(cs, y) * vars["Build"][cs, y]
+                for y in get_set("year")
+                for cs in get_set("conversion_subprocess")
+                if _cap_min_limit(cs, y) is not None
+            ),
+            name="build_min_activation",
+        )
         
         def year_gap(y):
             if y == get_set("year")[-1]:
@@ -266,13 +358,16 @@ class Model():
             ),
             name = "cap_active"
         )
-        constrs["max_cap_active"] = model.addConstrs(
-            (
-                vars["Cap_active"][cs,y] <= cap_max
-                for (cs,y,cap_max) in iter_row("cap_max")
-            ),
-            name = "max_cap_active"
-        )
+        constrs["max_cap_active"] = {}
+        for cs, y, cap_max in iter_row("cap_max"):
+            if cap_max is None:
+                continue
+            unit_limit = self.max_units_limits.get(cs, 1)
+            constr_name = f"max_cap_active[{cs},{y}]"
+            constrs["max_cap_active"][(cs, y)] = model.addConstr(
+                vars["Cap_active"][cs,y] <= cap_max * unit_limit,
+                name=constr_name,
+            )
         constrs["min_cap_active"] = model.addConstrs(
             (
                 vars["Cap_active"][cs,y] >= cap_min
@@ -312,13 +407,27 @@ class Model():
             ),
             name = "min_energy_out"
         )
+        profile_rows = {}
+        for cs, t, output_profile in iter_row("output_profile"):
+            profile_rows.setdefault(cs, []).append((t, output_profile))
+
+        filtered_profiles = []
+        for cs, rows in profile_rows.items():
+            ordered = sorted(rows, key=lambda x: x[0])
+            if len(ordered) > 1:
+                relevant = ordered[:-1]
+            else:
+                relevant = ordered
+            for entry in relevant:
+                filtered_profiles.append((cs, entry[0], entry[1]))
+
         constrs["load_shape"] = model.addConstrs(
             (
-                vars["Eouttime"][cs,y,t] == output_profile * vars["Eouttot"][cs,y]     
+                vars["Eouttime"][cs, y, t] == output_profile * vars["Eouttot"][cs, y]
+                for (cs, t, output_profile) in filtered_profiles
                 for y in get_set("year")
-                for (cs,t,output_profile) in iter_row("output_profile")
             ),
-            name = "load_shape"
+            name="load_shape",
         )
         constrs["net_to_gen"] = model.addConstrs(
             (
