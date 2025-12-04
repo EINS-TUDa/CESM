@@ -11,10 +11,10 @@ from pathlib import Path
 from InquirerPy import prompt
 
 # -- internal imports -- #
-from core.input_parser import Parser
-from core.model import Model
-from core.plotter import Plotter, PlotType
-from core.data_access import DAO
+from cesm.core.input_parser import Parser
+from cesm.core.model import Model
+from cesm.core.plotter import Plotter, PlotType
+from cesm.core.data_access import DAO
 import sqlite3
 
 # Constants

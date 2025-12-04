@@ -3,7 +3,8 @@ from setuptools import setup, find_packages
 setup(
     name='cesm',
     version='0.0.9',
-    packages=find_packages(),
+    packages=['cesm', 'cesm.core'],
+    package_dir={'cesm': '.'},
     description='Compact Energy System Modeling Tool (CESM)',
     long_description="""
 Compact Energy System Modeling Tool (CESM)
@@ -16,10 +17,9 @@ An example of the German energy system is also provided. The results of the mode
     #     'cesm': ['Data/*'],
     # },
     long_description_content_type='text/markdown',
-    py_modules=['cesm'],  # Assuming cesm.py is in the root of your package directory
     entry_points={
         'console_scripts': [
-            'cesm = cesm:app',  # Assuming your main function is named main
+            'cesm = main:app',
         ],
     },
     install_requires=[

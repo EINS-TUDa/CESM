@@ -5,11 +5,11 @@ Author: Sina Hajikazemi
 Date: 18.10.2023
 """
 
-from core.input_parser import Parser
+from cesm.core.input_parser import Parser
 from pathlib import Path
-from core.model import Model
-from core.plotter import Plotter, PlotType
-from core.data_access import DAO
+from cesm.core.model import Model
+from cesm.core.plotter import Plotter, PlotType
+from cesm.core.data_access import DAO
 import sqlite3
 
 

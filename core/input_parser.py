@@ -10,7 +10,7 @@ import pandas as pd
 import numpy as np
 import scipy.interpolate
 from collections import namedtuple
-from core.params import Param_Index_Dict
+from cesm.core.params import Param_Index_Dict
 import pkg_resources
 
 

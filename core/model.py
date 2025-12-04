@@ -7,8 +7,12 @@ Date: 10.10.2023
 
 import gurobipy as gp
 from gurobipy import GRB
-from core.data_access import DAO
+from pathlib import Path
+import sqlite3
 from sqlite3 import Connection
+import pkg_resources
+
+from cesm.core.data_access import DAO
 
 
 class Model():
@@ -589,11 +593,3 @@ class Model():
 #     # save results
 #     # sol_file_path = Path(".").joinpath("Runs", "sol_DEModel.sol")
 #     # model.save_results(sol_file_path=sol_file_path)
-
-
-
-
-
-
-        
-    
