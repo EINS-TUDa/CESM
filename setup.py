@@ -23,7 +23,7 @@ An example of the German energy system is also provided. The results of the mode
         ],
     },
     install_requires=[
-        "setuptools",
+        "setuptools<81",
         "openpyxl",
         "numpy",
         "scipy",
