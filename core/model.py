@@ -47,9 +47,10 @@ class Model():
         vars["Cap_res"] = model.addVars(get_set("conversion_subprocess"), get_set("year"), name="Cap_res")
         vars["Pin"] = model.addVars(get_set("conversion_subprocess"), get_set("year"), get_set("time"), name="Pin")
         vars["Pout"] = model.addVars(get_set("conversion_subprocess"), get_set("year"), get_set("time"), name="Pout")
+        self.build_cs = [cs for cs in get_set("conversion_subprocess") if cs.cp.startswith("cen_")]
         self.max_units_limits = {}
         build_ub = {}
-        for cs in get_set("conversion_subprocess"):
+        for cs in self.build_cs:
             raw_limit = self.dao.get_row("max_units", cs)
             try:
                 limit_val = int(round(float(raw_limit))) if raw_limit is not None else 1
@@ -62,14 +63,15 @@ class Model():
                 build_ub[(cs, y)] = limit_val
 
         vars["Build"] = model.addVars(
-            get_set("conversion_subprocess"),
+            self.build_cs,
             get_set("year"),
             vtype=GRB.INTEGER,
             ub=build_ub,
             name="Build",
         )
 
-        for cs, limit_val in self.max_units_limits.items():
+        for cs in self.build_cs:
+            limit_val = self.max_units_limits[cs]
             if limit_val == 1:
                 for y in get_set("year"):
                     vars["Build"][cs, y].vtype = GRB.BINARY
@@ -94,16 +96,21 @@ class Model():
         get_row = self.dao.get_row
         iter_row = self.dao.iter_row
         get_set = self.dao.get_set
+        build_cs = self.build_cs
 
         # Costs
         constrs["totex"] = model.addConstr(vars["TOTEX"] == vars["CAPEX"] + vars["OPEX"], name="totex")
         capex_terms = gp.quicksum(
             self.dao.get_discount_factor(y)
-            * (
-                vars["Cap_new"][cs, y] * get_row("capex_cost_power", cs, y)
-                + vars["Build"][cs, y] * get_row("capex_cost_base", cs, y)
-            )
+            * vars["Cap_new"][cs, y] * get_row("capex_cost_power", cs, y)
             for cs in get_set("conversion_subprocess")
+            for y in get_set("year")
+        )
+
+        capex_terms += gp.quicksum(
+            self.dao.get_discount_factor(y)
+            * vars["Build"][cs, y] * get_row("capex_cost_base", cs, y)
+            for cs in build_cs
             for y in get_set("year")
         )
 
@@ -124,7 +131,7 @@ class Model():
             (
                 vars["Cap_new"][cs, y] <= _cap_new_limit(cs, y) * vars["Build"][cs, y]
                 for y in get_set("year")
-                for cs in get_set("conversion_subprocess")
+                for cs in build_cs
             ),
             name="build_activation",
         )
@@ -146,7 +153,7 @@ class Model():
 
         unit_size_rows = [
             (cs, y, size)
-            for cs in get_set("conversion_subprocess")
+            for cs in build_cs
             for y in get_set("year")
             if (size := _cap_unit_size(cs, y)) is not None
         ]
@@ -165,7 +172,7 @@ class Model():
             (
                 vars["Cap_new"][cs, y] >= _cap_min_limit(cs, y) * vars["Build"][cs, y]
                 for y in get_set("year")
-                for cs in get_set("conversion_subprocess")
+                for cs in build_cs
                 if _cap_min_limit(cs, y) is not None
             ),
             name="build_min_activation",
