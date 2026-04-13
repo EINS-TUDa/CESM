@@ -383,6 +383,7 @@ class Model():
             (
                 vars["Cap_active"][cs,y] >= cap_min
                 for (cs,y,cap_min) in iter_row("cap_min")
+                if cs not in build_cs
             ),
             name = "min_cap_active"
         )
