@@ -3,8 +3,8 @@ from setuptools import setup, find_packages
 setup(
     name='cesm',
     version='0.0.9',
-    packages=['cesm', 'cesm.core', 'cesm.compare_techmaps'],
-    package_dir={'cesm': '.'},
+    package_dir={'': 'src'},
+    packages=find_packages(where="src"),
     description='Compact Energy System Modeling Tool (CESM)',
     long_description="""
 Compact Energy System Modeling Tool (CESM)
@@ -19,8 +19,8 @@ An example of the German energy system is also provided. The results of the mode
     long_description_content_type='text/markdown',
     entry_points={
         'console_scripts': [
-            'cesm = main:app',
-            'compare_techmaps = cesm.compare_techmaps.main:main',
+            'cesm = cesm.cesm_cli:app',
+            'compare_techmaps = compare_techmaps.main:main',
         ],
     },
     install_requires=[

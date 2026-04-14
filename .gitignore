@@ -152,8 +152,8 @@ dmypy.json
 ~$*
 
 # compare techmaps
-compare_techmaps/v1
-compare_techmaps/v2
+**/compare_techmaps/v1
+**/compare_techmaps/v2
 *.html
 
 Data/
