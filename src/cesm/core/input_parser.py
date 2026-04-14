@@ -79,7 +79,10 @@ class Parser:
         if p_name in ("cap_min", "cap_max", "cap_res_min", "cap_res_max", "cap_active"):
             return value * self.units["power"]
         if p_name in ("max_units",):
-            return value
+            val = float(value)
+            if not val.is_integer() or val <= 0:
+                raise ValueError(f"max_units must be a positive whole number, got {value}")
+            return int(val)
         else:
             return value
 

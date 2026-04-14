@@ -51,16 +51,11 @@ class Model():
         self.max_units_limits = {}
         build_ub = {}
         for cs in self.build_cs:
-            raw_limit = self.dao.get_row("max_units", cs)
-            try:
-                limit_val = int(round(float(raw_limit))) if raw_limit is not None else 1
-            except Exception:
-                limit_val = 1
-            if limit_val <= 0:
-                limit_val = 1
+            limit_val = self.dao.get_row("max_units", cs)  # int or None, validated in input_parser
             self.max_units_limits[cs] = limit_val
-            for y in get_set("year"):
-                build_ub[(cs, y)] = limit_val
+            if limit_val is not None:
+                for y in get_set("year"):
+                    build_ub[(cs, y)] = limit_val
 
         vars["Build"] = model.addVars(
             self.build_cs,
@@ -373,10 +368,11 @@ class Model():
         for cs, y, cap_max in iter_row("cap_max"):
             if cap_max is None:
                 continue
-            unit_limit = self.max_units_limits.get(cs, 1)
+            unit_limit = self.max_units_limits.get(cs)
             constr_name = f"max_cap_active[{cs},{y}]"
+            rhs = cap_max * unit_limit if unit_limit is not None else cap_max
             constrs["max_cap_active"][(cs, y)] = model.addConstr(
-                vars["Cap_active"][cs,y] <= cap_max * unit_limit,
+                vars["Cap_active"][cs,y] <= rhs,
                 name=constr_name,
             )
         constrs["min_cap_active"] = model.addConstrs(
