@@ -82,7 +82,7 @@ class Parser:
             return value
         else:
             return value
-    
+
     def read_scenario(self, tmap):
         df = pd.read_excel(tmap,"Scenario")
         row_index = df.index[df["scenario_name"]==self.scenario].tolist()[0]
@@ -211,13 +211,7 @@ class Parser:
                                      
                             # Potential normalization
                             if p_name in ["output_profile"]:
-                                total = float(sum(ts))
-                                if total:
-                                    ts = ts / total
-                                    remainder = 1.0
-                                    for value in ts[:-1]:
-                                        remainder -= float(value)
-                                    ts[-1] = float(max(0.0, remainder))
+                                ts = ts/sum(ts)
                             # insert to database
                             for i,time_step in enumerate(tss):
                                 try:
