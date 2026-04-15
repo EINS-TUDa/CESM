@@ -242,6 +242,17 @@ class DAO():
                 JOIN commodity AS cout ON cs.cout_id = cout.id;
                 """
                 return [CS(*x) for x in self.cursor.execute(query).fetchall()]
+            case "conversion_subprocess_base_costs":
+                query = """
+                SELECT DISTINCT cp.name, cin.name, cout.name
+                FROM param_cs_y
+                JOIN conversion_subprocess AS cs ON cs_id = cs.id
+                JOIN conversion_process AS cp ON cs.cp_id = cp.id
+                JOIN commodity AS cin ON cs.cin_id = cin.id
+                JOIN commodity AS cout ON cs.cout_id = cout.id
+                WHERE capex_cost_base IS NOT NULL;
+                """
+                return [CS(*x) for x in self.cursor.execute(query).fetchall()]
             case "storage_cs":
                 query = """
                 SELECT cp.name AS conversion_process_name, 

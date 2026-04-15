@@ -47,29 +47,29 @@ class Model():
         vars["Cap_res"] = model.addVars(get_set("conversion_subprocess"), get_set("year"), name="Cap_res")
         vars["Pin"] = model.addVars(get_set("conversion_subprocess"), get_set("year"), get_set("time"), name="Pin")
         vars["Pout"] = model.addVars(get_set("conversion_subprocess"), get_set("year"), get_set("time"), name="Pout")
-        self.build_cs = [cs for cs in get_set("conversion_subprocess") if cs.cp.startswith("cen_")]
-        self.max_units_limits = {}
-        build_ub = {}
-        for cs in self.build_cs:
-            limit_val = self.dao.get_row("max_units", cs)  # int or None, validated in input_parser
-            self.max_units_limits[cs] = limit_val
-            if limit_val is not None:
-                for y in get_set("year"):
-                    build_ub[(cs, y)] = limit_val
 
-        vars["Build"] = model.addVars(
-            self.build_cs,
+        # Installed_Units is defined for all cs with base costs; max_units_limits holds the optional upper bounds
+        base_cost_cs = get_set("conversion_subprocess_base_costs")
+        self.max_units_limits = {
+            cs: limit_val
+            for cs in base_cost_cs
+            if (limit_val := self.dao.get_row("max_units", cs)) is not None
+        }
+        # define variable with number of installed units, with upper bounds.
+        vars["Installed_Units"] = model.addVars(
+            base_cost_cs,
             get_set("year"),
             vtype=GRB.INTEGER,
-            ub=build_ub,
-            name="Build",
+            name="Installed_Units",
         )
 
-        for cs in self.build_cs:
-            limit_val = self.max_units_limits[cs]
-            if limit_val == 1:
-                for y in get_set("year"):
-                    vars["Build"][cs, y].vtype = GRB.BINARY
+        for cs, limit_val in self.max_units_limits.items():
+            for y in get_set("year"):
+                # Set upper bound for Installed_Units variable based on max_units parameter
+                vars["Installed_Units"][cs, y].ub = limit_val
+                # If max_units is 1, change type from integer to binary to improve solving performance
+                if limit_val == 1:
+                    vars["Installed_Units"][cs, y].vtype = GRB.BINARY
 
         # Energy
         vars["Eouttot"] = model.addVars(get_set("conversion_subprocess"), get_set("year"), name="Eouttot")
@@ -91,7 +91,6 @@ class Model():
         get_row = self.dao.get_row
         iter_row = self.dao.iter_row
         get_set = self.dao.get_set
-        build_cs = self.build_cs
 
         # Costs
         constrs["totex"] = model.addConstr(vars["TOTEX"] == vars["CAPEX"] + vars["OPEX"], name="totex")
@@ -104,8 +103,8 @@ class Model():
 
         capex_terms += gp.quicksum(
             self.dao.get_discount_factor(y)
-            * vars["Build"][cs, y] * get_row("capex_cost_base", cs, y)
-            for cs in build_cs
+            * vars["Installed_Units"][cs, y] * get_row("capex_cost_base", cs, y)
+            for cs in get_set("conversion_subprocess_base_costs")
             for y in get_set("year")
         )
 
@@ -116,58 +115,30 @@ class Model():
 
         def _cap_new_limit(cs, y):
             cap_limit = get_row("cap_max", cs, y)
-            if cap_limit is None or cap_limit <= 0:
-                cap_limit = get_row("cap_res_max", cs, y)
-            if cap_limit is None or cap_limit <= 0:
+            if cap_limit is None:
                 cap_limit = 1e6
             return cap_limit
 
         constrs["build_activation"] = model.addConstrs(
             (
-                vars["Cap_new"][cs, y] <= _cap_new_limit(cs, y) * vars["Build"][cs, y]
+                vars["Cap_new"][cs, y] <= _cap_new_limit(cs, y) * vars["Installed_Units"][cs, y]
                 for y in get_set("year")
-                for cs in build_cs
+                for cs in get_set("conversion_subprocess_base_costs")
             ),
             name="build_activation",
         )
 
         def _cap_min_limit(cs, y):
             cap_min = get_row("cap_min", cs, y)
-            if cap_min is None or cap_min <= 0:
+            if not cap_min: # if 0 or None
                 return None
             return cap_min
 
-        def _cap_unit_size(cs, y):
-            cap_max = get_row("cap_max", cs, y)
-            if cap_max is not None and cap_max > 0:
-                return cap_max
-            cap_min = _cap_min_limit(cs, y)
-            if cap_min is not None:
-                return cap_min
-            return None
-
-        unit_size_rows = [
-            (cs, y, size)
-            for cs in build_cs
-            for y in get_set("year")
-            if (size := _cap_unit_size(cs, y)) is not None
-        ]
-
-        if unit_size_rows:
-            # Lock Cap_new to discrete unit sizes so each Build pays the per-unit base CAPEX.
-            constrs["build_unit_size"] = model.addConstrs(
-                (
-                    vars["Cap_new"][cs, y] == size * vars["Build"][cs, y]
-                    for cs, y, size in unit_size_rows
-                ),
-                name="build_unit_size",
-            )
-
         constrs["build_min_activation"] = model.addConstrs(
             (
-                vars["Cap_new"][cs, y] >= _cap_min_limit(cs, y) * vars["Build"][cs, y]
+                vars["Cap_new"][cs, y] >= _cap_min_limit(cs, y) * vars["Installed_Units"][cs, y]
                 for y in get_set("year")
-                for cs in build_cs
+                for cs in get_set("conversion_subprocess_base_costs")
                 if _cap_min_limit(cs, y) is not None
             ),
             name="build_min_activation",
@@ -364,25 +335,31 @@ class Model():
             ),
             name = "cap_active"
         )
+        base_cost_cs_set = set(get_set("conversion_subprocess_base_costs"))
         constrs["max_cap_active"] = {}
         for cs, y, cap_max in iter_row("cap_max"):
             if cap_max is None:
                 continue
-            unit_limit = self.max_units_limits.get(cs)
-            constr_name = f"max_cap_active[{cs},{y}]"
-            rhs = cap_max * unit_limit if unit_limit is not None else cap_max
+            if cs in base_cost_cs_set:
+                rhs = cap_max * vars["Installed_Units"][cs, y]
+            else:
+                rhs = cap_max
             constrs["max_cap_active"][(cs, y)] = model.addConstr(
-                vars["Cap_active"][cs,y] <= rhs,
-                name=constr_name,
+                vars["Cap_active"][cs, y] <= rhs,
+                name=f"max_cap_active",
             )
-        constrs["min_cap_active"] = model.addConstrs(
-            (
-                vars["Cap_active"][cs,y] >= cap_min
-                for (cs,y,cap_min) in iter_row("cap_min")
-                if cs not in build_cs
-            ),
-            name = "min_cap_active"
-        )
+        constrs["min_cap_active"] = {}
+        for cs, y, cap_min in iter_row("cap_min"):
+            if not cap_min:
+                continue
+            if cs in base_cost_cs_set:
+                rhs = cap_min * vars["Installed_Units"][cs, y]
+            else:
+                rhs = cap_min
+            constrs["min_cap_active"][(cs, y)] = model.addConstr(
+                vars["Cap_active"][cs, y] >= rhs,
+                name=f"min_cap_active",
+            )
 
         # Energy
         constrs["energy_power_out"] = model.addConstrs(
