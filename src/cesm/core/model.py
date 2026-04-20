@@ -336,30 +336,25 @@ class Model():
             name = "cap_active"
         )
         base_cost_cs_set = set(get_set("conversion_subprocess_base_costs"))
-        constrs["max_cap_active"] = {}
-        for cs, y, cap_max in iter_row("cap_max"):
-            if cap_max is None:
-                continue
-            if cs in base_cost_cs_set:
-                rhs = cap_max * vars["Installed_Units"][cs, y]
-            else:
-                rhs = cap_max
-            constrs["max_cap_active"][(cs, y)] = model.addConstr(
-                vars["Cap_active"][cs, y] <= rhs,
-                name=f"max_cap_active",
-            )
-        constrs["min_cap_active"] = {}
-        for cs, y, cap_min in iter_row("cap_min"):
-            if not cap_min:
-                continue
-            if cs in base_cost_cs_set:
-                rhs = cap_min * vars["Installed_Units"][cs, y]
-            else:
-                rhs = cap_min
-            constrs["min_cap_active"][(cs, y)] = model.addConstr(
-                vars["Cap_active"][cs, y] >= rhs,
-                name=f"min_cap_active",
-            )
+        constrs["max_cap_active"] = model.addConstrs(
+            (
+                vars["Cap_active"][cs, y] <= (
+                    cap_max * vars["Installed_Units"][cs, y] if cs in base_cost_cs_set else cap_max)
+                for cs, y, cap_max in iter_row("cap_max")
+                if cap_max is not None
+            ),
+            name="max_cap_active",
+        )
+
+        constrs["min_cap_active"] = model.addConstrs(
+            (
+                vars["Cap_active"][cs, y] >= (
+                    cap_min * vars["Installed_Units"][cs, y] if cs in base_cost_cs_set else cap_min)
+                for cs, y, cap_min in iter_row("cap_min")
+                if cap_min
+            ),
+            name="min_cap_active",
+        )
 
         # Energy
         constrs["energy_power_out"] = model.addConstrs(
