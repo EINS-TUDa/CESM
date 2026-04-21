@@ -493,6 +493,64 @@ def main() -> None:
     report_path = base_dir / f"comparison_{safe_name}.html"
     generate_html_report(pair_name, diffs, report_path)
 
+def compare_techmaps(
+    path_v1: Path | str,
+    path_v2: Path | str,
+    path_output: Path | str,
+) -> dict[str, SheetDiff]:
+    """Compare two techmap Excel files and write an HTML report.
+
+    Parameters
+    ----------
+    path_v1:     Path to the v1 techmap .xlsx file.
+    path_v2:     Path to the v2 techmap .xlsx file.
+    path_output: Path for the generated HTML report.
+
+    Returns
+    -------
+    Dictionary mapping sheet names to their :class:`SheetDiff` results.
+    """
+    path_v1 = Path(path_v1)
+    path_v2 = Path(path_v2)
+    path_output = Path(path_output)
+
+    pair_name = f"{path_v1.name}  ↔  {path_v2.name}"
+    print("=" * 70)
+    print(f"Comparing: {pair_name}")
+    print("=" * 70)
+
+    sheets_v1 = load_techmap(path_v1)
+    sheets_v2 = load_techmap(path_v2)
+
+    diffs: dict[str, SheetDiff] = {}
+
+    for sheet_name in SHEET_NAMES:
+        df1 = sheets_v1.get(sheet_name)
+        df2 = sheets_v2.get(sheet_name)
+
+        if df1 is None or df2 is None:
+            if df1 is None and df2 is None:
+                continue
+            d = SheetDiff(sheet_name=sheet_name)
+            if df1 is None:
+                d.added_rows = df2
+            else:
+                d.removed_rows = df1
+            diffs[sheet_name] = d
+            print_sheet_diff(d)
+            continue
+
+        if sheet_name in SHEET_KEY_COLS:
+            d = compare_by_key(df1, df2, sheet_name, SHEET_KEY_COLS[sheet_name])
+        else:
+            d = compare_generic_sheet(df1, df2, sheet_name)
+
+        diffs[sheet_name] = d
+        print_sheet_diff(d)
+
+    generate_html_report(pair_name, diffs, path_output)
+    return diffs
+
 
 if __name__ == "__main__":
     main()
