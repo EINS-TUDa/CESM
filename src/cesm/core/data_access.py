@@ -250,7 +250,7 @@ class DAO():
                 JOIN conversion_process AS cp ON cs.cp_id = cp.id
                 JOIN commodity AS cin ON cs.cin_id = cin.id
                 JOIN commodity AS cout ON cs.cout_id = cout.id
-                WHERE capex_cost_base IS NOT NULL;
+                WHERE capex_cost_base > 0;
                 """
                 return [CS(*x) for x in self.cursor.execute(query).fetchall()]
             case "storage_cs":
