@@ -39,6 +39,9 @@ CSP_KEY_COLS = [
     "scenario",
 ]
 
+# Columns that are intentionally ignored during comparison
+IGNORED_COLS = {"order"}
+
 
 # ---------------------------------------------------------------------------
 # Data structures
@@ -144,8 +147,8 @@ def compare_generic_sheet(
     """Compare two DataFrames row-by-row (positional) for simple sheets."""
     diff = SheetDiff(sheet_name=sheet_name)
 
-    # Column differences
-    cols1, cols2 = set(df1.columns), set(df2.columns)
+    # Column differences (excluding ignored columns)
+    cols1, cols2 = set(df1.columns) - IGNORED_COLS, set(df2.columns) - IGNORED_COLS
     diff.cols_only_v1 = sorted(cols1 - cols2)
     diff.cols_only_v2 = sorted(cols2 - cols1)
 
@@ -196,7 +199,7 @@ def compare_by_key(
     diff.cols_only_v2 = sorted(cols2 - cols1)
 
     common_cols = [c for c in df1.columns if c in cols2]
-    param_cols = [c for c in common_cols if c not in key_cols]
+    param_cols = [c for c in common_cols if c not in key_cols and c not in IGNORED_COLS]
 
     df1 = df1.copy()
     df2 = df2.copy()
