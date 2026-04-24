@@ -52,6 +52,7 @@ class Parser:
         self.read_co(tmap)
         self.read_cp(tmap)
         self.read_cs(tmap)
+        self.validate()
 
     def read_units (self, tmap) -> None:
         df = pd.read_excel(tmap,"Units")
@@ -265,16 +266,79 @@ class Parser:
         df = pd.read_excel(tmap,"Scenario")
         return df["scenario_name"].to_list()
 
-if __name__ == '__main__':
-    techmap_dir_path = Path(".").joinpath("Data", "Techmap")
-    ts_dir_path = Path(".").joinpath("Data", "TimeSeries")
-    db_dir_path = Path(".").joinpath("Runs", "DEModel_V2-Base4twk")
-    file_path = Path(".").joinpath("Runs", "DEModel_V2-Base4twk", "db.sqlite")
-    if file_path.exists():
-        # Delete the file using unlink()
-        file_path.unlink()
-        print("File deleted successfully:", file_path)
-    else:
-        print("File does not exist:", file_path)
-    parser = Parser("DEModel_V2",techmap_dir_path=techmap_dir_path, ts_dir_path=ts_dir_path ,db_dir_path=db_dir_path ,scenario = "Base4twk")
-    parser.parse()
+    def validate(self) -> None:
+        """Validate the parsed techmap data for common input errors."""
+        print("Testing the Techmap for possible input errors")
+        errors_found = False
+
+        cp_names = pd.Series([
+            r[0] for r in self.cursor.execute("SELECT name FROM conversion_process").fetchall()
+        ])
+        co_names = pd.Series([
+            r[0] for r in self.cursor.execute("SELECT name FROM commodity").fetchall()
+        ])
+        cs_rows = self.cursor.execute(
+            """
+            SELECT cp.name, cin.name, cout.name
+            FROM conversion_subprocess cs
+            JOIN conversion_process cp ON cs.cp_id = cp.id
+            JOIN commodity cin ON cs.cin_id = cin.id
+            JOIN commodity cout ON cs.cout_id = cout.id
+            """
+        ).fetchall()
+        cs_cp   = pd.Series([r[0] for r in cs_rows])
+        cs_cin  = pd.Series([r[1] for r in cs_rows])
+        cs_cout = pd.Series([r[2] for r in cs_rows])
+
+        # All CS entries must appear in CP
+        if not cs_cp.isin(cp_names).all():
+            missing = cs_cp[~cs_cp.isin(cp_names)].unique().tolist()
+            print(f"  ERROR – ConversionSubProcess references unknown ConversionProcess: {missing}")
+            errors_found = True
+
+        # CP names must be unique
+        if not cp_names.is_unique:
+            dupes = cp_names[cp_names.duplicated()].tolist()
+            print(f"  ERROR – Duplicate ConversionProcess names: {dupes}")
+            errors_found = True
+
+        # All CP entries must appear in CS
+        if not cp_names.isin(cs_cp).all():
+            missing = cp_names[~cp_names.isin(cs_cp)].tolist()
+            print(f"  WARNING – ConversionProcess entries with no ConversionSubProcess: {missing}")
+            errors_found = True
+
+        # Commodity names must be unique
+        if not co_names.is_unique:
+            dupes = co_names[co_names.duplicated()].tolist()
+            print(f"  ERROR – Duplicate Commodity names: {dupes}")
+            errors_found = True
+
+        # All commodities must appear at least once as commodity_in
+        if not co_names.isin(cs_cin).all():
+            missing = co_names[~co_names.isin(cs_cin)].tolist()
+            print(f"  ERROR – Commodities never used as commodity_in: {missing}")
+            errors_found = True
+
+        # All commodities must appear at least once as commodity_out
+        if not co_names.isin(cs_cout).all():
+            missing = co_names[~co_names.isin(cs_cout)].tolist()
+            print(f"  ERROR – Commodities never used as commodity_out: {missing}")
+            errors_found = True
+
+        # All commodity_out values must exist in Commodity
+        if not cs_cout.isin(co_names).all():
+            missing = cs_cout[~cs_cout.isin(co_names)].unique().tolist()
+            print(f"  ERROR – ConversionSubProcess commodity_out references unknown Commodity: {missing}")
+            errors_found = True
+
+        # All commodity_in values must exist in Commodity
+        if not cs_cin.isin(co_names).all():
+            missing = cs_cin[~cs_cin.isin(co_names)].unique().tolist()
+            print(f"  ERROR – ConversionSubProcess commodity_in references unknown Commodity: {missing}")
+            errors_found = True
+
+        if not errors_found:
+            print("  OK – No input errors found.")
+        else:
+            raise ValueError("Techmap validation failed. See above for details.")
