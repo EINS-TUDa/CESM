@@ -134,7 +134,7 @@ class Plotter:
             ))])
 
       fig.update_layout(title_text="%s Sankey"%year, font_size=12)
-      # fig.show()
+      fig.show()
       return fig
 
    def plot_single_value(self, single_value_type: list[PlotType.SingleValue]):
