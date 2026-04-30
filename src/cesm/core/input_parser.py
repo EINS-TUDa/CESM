@@ -5,13 +5,16 @@ Input Parsing Module
 author: Sina Hajikazemi
 date: 13.10.2023
 """
-from pathlib import Path
 import pandas as pd
 import numpy as np
 import scipy.interpolate
 from collections import namedtuple
 from cesm.core.params import Param_Index_Dict
 import pkg_resources
+
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class Parser:
@@ -268,8 +271,9 @@ class Parser:
 
     def validate(self) -> None:
         """Validate the parsed techmap data for common input errors."""
-        print("Testing the Techmap for possible input errors")
-        errors_found = False
+        logger.info("Validating techmap input data...")
+        errors: list[str] = []
+        warnings: list[str] = []
 
         cp_names = pd.Series([
             r[0] for r in self.cursor.execute("SELECT name FROM conversion_process").fetchall()
@@ -290,55 +294,43 @@ class Parser:
         cs_cin  = pd.Series([r[1] for r in cs_rows])
         cs_cout = pd.Series([r[2] for r in cs_rows])
 
-        # All CS entries must appear in CP
         if not cs_cp.isin(cp_names).all():
             missing = cs_cp[~cs_cp.isin(cp_names)].unique().tolist()
-            print(f"  ERROR – ConversionSubProcess references unknown ConversionProcess: {missing}")
-            errors_found = True
+            errors.append(f"ConversionSubProcess references unknown ConversionProcess: {missing}")
 
-        # CP names must be unique
         if not cp_names.is_unique:
             dupes = cp_names[cp_names.duplicated()].tolist()
-            print(f"  ERROR – Duplicate ConversionProcess names: {dupes}")
-            errors_found = True
+            errors.append(f"Duplicate ConversionProcess names: {dupes}")
 
-        # All CP entries must appear in CS
         if not cp_names.isin(cs_cp).all():
             missing = cp_names[~cp_names.isin(cs_cp)].tolist()
-            print(f"  WARNING – ConversionProcess entries with no ConversionSubProcess: {missing}")
-            errors_found = True
+            warnings.append(f"ConversionProcess entries with no ConversionSubProcess: {missing}")
 
-        # Commodity names must be unique
         if not co_names.is_unique:
             dupes = co_names[co_names.duplicated()].tolist()
-            print(f"  ERROR – Duplicate Commodity names: {dupes}")
-            errors_found = True
+            errors.append(f"Duplicate Commodity names: {dupes}")
 
-        # All commodities must appear at least once as commodity_in
         if not co_names.isin(cs_cin).all():
             missing = co_names[~co_names.isin(cs_cin)].tolist()
-            print(f"  ERROR – Commodities never used as commodity_in: {missing}")
-            errors_found = True
+            errors.append(f"Commodities never used as commodity_in: {missing}")
 
-        # All commodities must appear at least once as commodity_out
         if not co_names.isin(cs_cout).all():
             missing = co_names[~co_names.isin(cs_cout)].tolist()
-            print(f"  ERROR – Commodities never used as commodity_out: {missing}")
-            errors_found = True
+            errors.append(f"Commodities never used as commodity_out: {missing}")
 
-        # All commodity_out values must exist in Commodity
         if not cs_cout.isin(co_names).all():
             missing = cs_cout[~cs_cout.isin(co_names)].unique().tolist()
-            print(f"  ERROR – ConversionSubProcess commodity_out references unknown Commodity: {missing}")
-            errors_found = True
+            errors.append(f"ConversionSubProcess commodity_out references unknown Commodity: {missing}")
 
-        # All commodity_in values must exist in Commodity
         if not cs_cin.isin(co_names).all():
             missing = cs_cin[~cs_cin.isin(co_names)].unique().tolist()
-            print(f"  ERROR – ConversionSubProcess commodity_in references unknown Commodity: {missing}")
-            errors_found = True
+            errors.append(f"ConversionSubProcess commodity_in references unknown Commodity: {missing}")
 
-        if not errors_found:
-            print("  OK – No input errors found.")
-        else:
-            raise ValueError("Techmap validation failed. See above for details.")
+        for w in warnings:
+            logger.warning(w)
+        for e in errors:
+            logger.error(e)
+
+        if errors:
+            raise ValueError("Techmap validation failed:\n  - " + "\n  - ".join(errors))
+        logger.info("Techmap validation OK.")
