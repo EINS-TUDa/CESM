@@ -345,24 +345,40 @@ class Model():
             name = "cap_active"
         )
         base_cost_cs_set = set(get_set("conversion_subprocess_base_costs"))
+        # max_cap_active is omitted for base-cost cs: build_activation already enforces
+        # Cap_new[cs, y] <= cap_max * Installed_Units[cs, y] per year
         constrs["max_cap_active"] = model.addConstrs(
             (
-                vars["Cap_active"][cs, y] <= (
-                    cap_max * vars["Installed_Units"][cs, y] if cs in base_cost_cs_set else cap_max)
+                vars["Cap_active"][cs, y] <= cap_max
                 for cs, y, cap_max in iter_row("cap_max")
-                if cap_max is not None
+                if cap_max is not None and cs not in base_cost_cs_set
             ),
             name="max_cap_active",
         )
 
         constrs["min_cap_active"] = model.addConstrs(
             (
-                vars["Cap_active"][cs, y] >= (
-                    cap_min * vars["Installed_Units"][cs, y] if cs in base_cost_cs_set else cap_min)
+                vars["Cap_active"][cs, y] >= cap_min
                 for cs, y, cap_min in iter_row("cap_min")
-                if cap_min
+                if cap_min and cs not in base_cost_cs_set
             ),
             name="min_cap_active",
+        )
+
+        # For base-cost cs, bound only the new-built portion (Cap_active - Cap_res)
+        # against the cumulative Installed_Units over the technical lifetime window,
+        # so residual-only years don't force Installed_Units >= 1.
+        constrs["min_cap_active_base"] = model.addConstrs(
+            (
+                vars["Cap_active"][cs, y] - vars["Cap_res"][cs, y] >= cap_min * sum(
+                    vars["Installed_Units"][cs, yy]
+                    for yy in get_set("year")
+                    if yy in range(y - get_row("technical_lifetime", cs) + 1, y + 1)
+                )
+                for cs, y, cap_min in iter_row("cap_min")
+                if cap_min and cs in base_cost_cs_set
+            ),
+            name="min_cap_active_base",
         )
 
         # Energy
