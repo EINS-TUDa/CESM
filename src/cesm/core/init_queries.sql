@@ -69,7 +69,6 @@ CREATE TABLE IF NOT EXISTS param_global (
 CREATE TABLE IF NOT EXISTS param_cs (
     id INTEGER PRIMARY KEY,
     cs_id INTEGER,
-    spec_co2 FLOAT,
     efficiency FLOAT,
     technical_lifetime INTEGER,
     technical_availability FLOAT,
@@ -96,6 +95,7 @@ CREATE TABLE IF NOT EXISTS param_cs_y (
     id INTEGER PRIMARY KEY,
     cs_id INTEGER,
     y_id INTEGER,
+    spec_co2 FLOAT,
     opex_cost_energy FLOAT,
     opex_cost_power FLOAT,
     capex_cost_power FLOAT,

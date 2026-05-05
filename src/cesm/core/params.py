@@ -25,7 +25,7 @@ Param_Index_Dict = {
     "out_frac_max": ["CS", "Y"],
     "in_frac_min": ["CS", "Y"],
     "in_frac_max": ["CS", "Y"],
-    "spec_co2": ["CS"],
+    "spec_co2": ["CS", "Y"],
     "is_storage": ["CS"],
     "c_rate": ["CS"],
     "efficiency_charge": ["CS"]

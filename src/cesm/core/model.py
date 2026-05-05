@@ -211,7 +211,7 @@ class Model():
         # CO2
         constrs["co2_emission_eq"] = model.addConstrs(
             (
-                vars["Total_annual_co2_emission"][y] == sum(get_row("spec_co2", cs) * vars["Eouttot"][cs,y] for cs in get_set("conversion_subprocess"))
+                vars["Total_annual_co2_emission"][y] == sum(get_row("spec_co2", cs, y) * vars["Eouttot"][cs,y] for cs in get_set("conversion_subprocess"))
                 for y in get_set("year")
             ),
             name="co2_emission_eq"
