@@ -5,6 +5,8 @@ setup(
     version='0.0.9',
     package_dir={'': 'src'},
     packages=find_packages(where="src"),
+    include_package_data=True,
+    package_data={'cesm': ['core/*.sql']},
     description='Compact Energy System Modeling Tool (CESM)',
     long_description="""
 Compact Energy System Modeling Tool (CESM)
