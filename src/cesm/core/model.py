@@ -485,11 +485,11 @@ class Model():
                 eintot = vars['Eintot'][cs,y].X
                 e_storage_level_max =  vars['E_storage_level_max'][cs,y].X
                 dis_salvage_value = vars['DiscountedSalvageValue'][cs,y].X
-                installed_units = vars['NewlyInstalledUnits'][cs,y].X if cs in base_cost_cs_set else 0
-                if any(item != 0 for item in (cap_new, cap_active, cap_res, eouttot, eintot, e_storage_level_max, dis_salvage_value, installed_units)):
+                newly_installed_units = vars['NewlyInstalledUnits'][cs,y].X if cs in base_cost_cs_set else 0
+                if any(item != 0 for item in (cap_new, cap_active, cap_res, eouttot, eintot, e_storage_level_max, dis_salvage_value, newly_installed_units)):
                     query = f"""
-                    INSERT INTO output_cs_y (cs_id, y_id, cap_new, cap_active, cap_res, eouttot, eintot, e_storage_level_max, dis_salvage_value, installed_units)
-                    SELECT cs.id, y.id, {cap_new}, {cap_active}, {cap_res}, {eouttot}, {eintot}, {e_storage_level_max}, {dis_salvage_value}, {installed_units}
+                    INSERT INTO output_cs_y (cs_id, y_id, cap_new, cap_active, cap_res, eouttot, eintot, e_storage_level_max, dis_salvage_value, newly_installed_units)
+                    SELECT cs.id, y.id, {cap_new}, {cap_active}, {cap_res}, {eouttot}, {eintot}, {e_storage_level_max}, {dis_salvage_value}, {newly_installed_units}
                     FROM conversion_subprocess AS cs
                     JOIN conversion_process AS cp ON cs.cp_id = cp.id
                     JOIN commodity AS cin ON cs.cin_id = cin.id
