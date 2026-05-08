@@ -107,6 +107,9 @@ class Plotter:
       
       sankey_df = sankey_df.loc[sankey_df["source"] != "Dummy"]
       sankey_df = sankey_df.loc[sankey_df["target"] != "Dummy"]
+      sankey_df = sankey_df.loc[~sankey_df["source"].str.startswith("Help_")]
+      sankey_df = sankey_df.loc[~sankey_df["target"].str.startswith("Help_")]
+      sankey_df = sankey_df.loc[sankey_df["source"] != sankey_df["target"]]
 
       # Main Sankey Plot
       nodes = list(sankey_df["source"]) + list(sankey_df["target"])
