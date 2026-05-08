@@ -141,10 +141,14 @@ class Model():
         )
 
         # Salvage Value
+        base_cost_cs_set = set(get_set("conversion_subprocess_base_costs"))
+
         def salvage_value_rule(cs,y):
             last_year = get_set("year")[-1]
-            #discount_rate = get_row("discount_rate") 
-            salvage_value =  vars["Cap_new"][cs,y]* get_row("capex_cost_power",cs,y)*(1-(last_year-y+1)/get_row("technical_lifetime",cs))
+            remaining_fraction = 1 - (last_year - y + 1) / get_row("technical_lifetime", cs)
+            salvage_value = vars["Cap_new"][cs,y] * get_row("capex_cost_power",cs,y) * remaining_fraction
+            if cs in base_cost_cs_set:
+                salvage_value += vars["NewlyInstalledUnits"][cs,y] * get_row("capex_cost_base",cs,y) * remaining_fraction
             discounted_salvage_value = salvage_value * self.dao.get_discount_factor(last_year)
             return discounted_salvage_value
             
