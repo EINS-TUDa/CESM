@@ -72,7 +72,7 @@ CREATE TABLE IF NOT EXISTS param_cs (
     efficiency FLOAT,
     technical_lifetime INTEGER,
     technical_availability FLOAT,
-    max_units FLOAT,
+    cap_max_unit FLOAT,
     c_rate FLOAT,
     efficiency_charge FLOAT,
     is_storage BOOLEAN,

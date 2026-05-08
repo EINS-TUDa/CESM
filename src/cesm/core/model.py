@@ -48,28 +48,21 @@ class Model():
         vars["Pin"] = model.addVars(get_set("conversion_subprocess"), get_set("year"), get_set("time"), name="Pin")
         vars["Pout"] = model.addVars(get_set("conversion_subprocess"), get_set("year"), get_set("time"), name="Pout")
 
-        # Installed_Units is defined for all cs with base costs; max_units_limits holds the optional upper bounds
+        # NewlyInstalledUnits is defined for all cs with base costs.
         base_cost_cs = get_set("conversion_subprocess_base_costs")
-        self.max_units_limits = {
-            cs: limit_val
-            for cs in base_cost_cs
-            if (limit_val := self.dao.get_row("max_units", cs)) is not None
-        }
-        # define variable with number of installed units, with upper bounds.
-        vars["Installed_Units"] = model.addVars(
+        vars["NewlyInstalledUnits"] = model.addVars(
             base_cost_cs,
             get_set("year"),
             vtype=GRB.INTEGER,
-            name="Installed_Units",
+            name="NewlyInstalledUnits",
         )
-
-        for cs, limit_val in self.max_units_limits.items():
-            for y in get_set("year"):
-                # Set upper bound for Installed_Units variable based on max_units parameter
-                vars["Installed_Units"][cs, y].ub = limit_val
-                # If max_units is 1, change type from integer to binary to improve solving performance
-                if limit_val == 1:
-                    vars["Installed_Units"][cs, y].vtype = GRB.BINARY
+        for cs in base_cost_cs:
+            # If no per-unit cap is set (cap_max_unit == default sentinel 1e6),
+            # restrict to a binary install/don't-install decision per year.
+            cap_max_unit = self.dao.get_row("cap_max_unit", cs)
+            if cap_max_unit == 1e6:
+                for y in get_set("year"):
+                    vars["NewlyInstalledUnits"][cs, y].vtype = GRB.BINARY
 
         # Energy
         vars["Eouttot"] = model.addVars(get_set("conversion_subprocess"), get_set("year"), name="Eouttot")
@@ -103,7 +96,7 @@ class Model():
 
         capex_terms += gp.quicksum(
             self.dao.get_discount_factor(y)
-            * vars["Installed_Units"][cs, y] * get_row("capex_cost_base", cs, y)
+            * vars["NewlyInstalledUnits"][cs, y] * get_row("capex_cost_base", cs, y)
             for cs in get_set("conversion_subprocess_base_costs")
             for y in get_set("year")
         )
@@ -113,35 +106,13 @@ class Model():
             name="capex",
         )
 
-        def _cap_new_limit(cs, y):
-            cap_limit = get_row("cap_max", cs, y)
-            if cap_limit is None:
-                cap_limit = 1e6
-            return cap_limit
-
         constrs["build_activation"] = model.addConstrs(
             (
-                vars["Cap_new"][cs, y] <= _cap_new_limit(cs, y) * vars["Installed_Units"][cs, y]
+                vars["Cap_new"][cs, y] <= self.dao.get_row("cap_max_unit", cs) * vars["NewlyInstalledUnits"][cs, y]
                 for y in get_set("year")
                 for cs in get_set("conversion_subprocess_base_costs")
             ),
             name="build_activation",
-        )
-
-        def _cap_min_limit(cs, y):
-            cap_min = get_row("cap_min", cs, y)
-            if not cap_min: # if 0 or None
-                return None
-            return cap_min
-
-        constrs["build_min_activation"] = model.addConstrs(
-            (
-                vars["Cap_new"][cs, y] >= _cap_min_limit(cs, y) * vars["Installed_Units"][cs, y]
-                for y in get_set("year")
-                for cs in get_set("conversion_subprocess_base_costs")
-                if _cap_min_limit(cs, y) is not None
-            ),
-            name="build_min_activation",
         )
         
         def year_gap(y):
@@ -345,13 +316,12 @@ class Model():
             name = "cap_active"
         )
         base_cost_cs_set = set(get_set("conversion_subprocess_base_costs"))
-        # max_cap_active is omitted for base-cost cs: build_activation already enforces
-        # Cap_new[cs, y] <= cap_max * Installed_Units[cs, y] per year
+
         constrs["max_cap_active"] = model.addConstrs(
             (
                 vars["Cap_active"][cs, y] <= cap_max
                 for cs, y, cap_max in iter_row("cap_max")
-                if cap_max is not None and cs not in base_cost_cs_set
+                if cap_max is not None
             ),
             name="max_cap_active",
         )
@@ -360,25 +330,9 @@ class Model():
             (
                 vars["Cap_active"][cs, y] >= cap_min
                 for cs, y, cap_min in iter_row("cap_min")
-                if cap_min and cs not in base_cost_cs_set
+                if cap_min
             ),
             name="min_cap_active",
-        )
-
-        # For base-cost cs, bound only the new-built portion (Cap_active - Cap_res)
-        # against the cumulative Installed_Units over the technical lifetime window,
-        # so residual-only years don't force Installed_Units >= 1.
-        constrs["min_cap_active_base"] = model.addConstrs(
-            (
-                vars["Cap_active"][cs, y] - vars["Cap_res"][cs, y] >= cap_min * sum(
-                    vars["Installed_Units"][cs, yy]
-                    for yy in get_set("year")
-                    if yy in range(y - get_row("technical_lifetime", cs) + 1, y + 1)
-                )
-                for cs, y, cap_min in iter_row("cap_min")
-                if cap_min and cs in base_cost_cs_set
-            ),
-            name="min_cap_active_base",
         )
 
         # Energy
@@ -527,7 +481,7 @@ class Model():
                 eintot = vars['Eintot'][cs,y].X
                 e_storage_level_max =  vars['E_storage_level_max'][cs,y].X
                 dis_salvage_value = vars['DiscountedSalvageValue'][cs,y].X
-                installed_units = vars['Installed_Units'][cs,y].X if cs in base_cost_cs_set else 0
+                installed_units = vars['NewlyInstalledUnits'][cs,y].X if cs in base_cost_cs_set else 0
                 if any(item != 0 for item in (cap_new, cap_active, cap_res, eouttot, eintot, e_storage_level_max, dis_salvage_value, installed_units)):
                     query = f"""
                     INSERT INTO output_cs_y (cs_id, y_id, cap_new, cap_active, cap_res, eouttot, eintot, e_storage_level_max, dis_salvage_value, installed_units)

@@ -80,13 +80,8 @@ class Parser:
             return value * self.units["co2_spec"]
         if p_name in ("max_eout", "min_eout"):
             return value * self.units["energy"]
-        if p_name in ("cap_min", "cap_max", "cap_res_min", "cap_res_max", "cap_active"):
+        if p_name in ("cap_min", "cap_max", "cap_res_min", "cap_res_max", "cap_active", "cap_max_unit"):
             return value * self.units["power"]
-        if p_name in ("max_units",):
-            val = float(value)
-            if not val.is_integer() or val <= 0:
-                raise ValueError(f"max_units must be a positive whole number, got {value}")
-            return int(val)
         else:
             return value
 
