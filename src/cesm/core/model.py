@@ -4,6 +4,7 @@ Energy System Planning Model in Gurobi Python API
 Author: Sina Hajikazemi
 Date: 10.10.2023
 """
+from typing import Optional
 
 import gurobipy as gp
 from gurobipy import GRB
@@ -454,10 +455,12 @@ class Model():
 
         model.setObjective(vars["TOTEX"]+ 0, GRB.MINIMIZE)
 
-    def solve(self) -> None:
+    def solve(self, mip_gap: Optional[float] = None) -> None:
         self.model.Params.Crossover = 0
         self.model.Params.Method = 2 # Barrier https://www.gurobi.com/documentation/current/refman/method.html 
         self.model.Params.BarConvTol = 1e-6
+        if mip_gap is not None:
+            self.model.Params.MIPGap = mip_gap
         #self.model.setParam(GRB.Param.BarConvTol, 1e-7)
         return self.model.optimize()
     
