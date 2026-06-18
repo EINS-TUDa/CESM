@@ -61,7 +61,7 @@ class Model():
             # If no per-unit cap is set (cap_max_unit == default sentinel 1e6),
             # restrict to a binary install/don't-install decision per year.
             cap_max_unit = self.dao.get_row("cap_max_unit", cs)
-            if cap_max_unit == 1e6:
+            if cap_max_unit == 1e3:
                 for y in get_set("year"):
                     vars["NewlyInstalledUnits"][cs, y].vtype = GRB.BINARY
 
