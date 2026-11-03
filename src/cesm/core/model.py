@@ -328,6 +328,24 @@ class Model():
         )
         base_cost_cs_set = set(get_set("conversion_subprocess_base_costs"))
 
+        def demand_peak(cs):
+            demands = [d for d in get_set("conversion_subprocess") if d.cin == cs.cout]
+            profiles = [[get_row("output_profile", d, t) for t in get_set("time")] for d in demands]
+            if not demands or any(d.cout != "Dummy" for d in demands) or any(None in p for p in profiles):
+                return 0
+            return sum(max(get_row("min_eout", d, y) for y in get_set("year")) * max(p)
+                       for d, p in zip(demands, profiles)) / (get_row("dt") * get_row("w"))
+
+        ties = {}
+        for cs in get_set("conversion_subprocess"):
+            producers = [p for p in get_set("conversion_subprocess") if p.cout == cs.cin]
+            if len(producers) == 1 and producers[0] in base_cost_cs_set and demand_peak(cs) > 0:
+                ties[cs] = (producers[0], demand_peak(cs))
+        constrs["producer_tie"] = model.addConstrs(
+            (vars["Cap_active"][cs, y] - vars["Cap_res"][cs, y] <= ties[cs][1] * 1.001 * built_units(ties[cs][0], y)
+             for cs in ties for y in get_set("year")),
+            name="producer_tie")
+
         constrs["max_cap_active"] = model.addConstrs(
             (
                 vars["Cap_active"][cs, y] <= cap_max
