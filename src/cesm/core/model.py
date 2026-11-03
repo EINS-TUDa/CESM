@@ -201,9 +201,15 @@ class Model():
         )
         
         # Power Output Constraints
+        def built_units(cs, y):
+            return (get_row("cap_res_min", cs, y) > 0) + gp.quicksum(
+                vars["NewlyInstalledUnits"][cs, yy] for yy in get_set("year")
+                if y - get_row("technical_lifetime", cs) < yy <= y)
+
         constrs["efficiency"] = model.addConstrs(
             (
                 vars["Pout"][cs,y,t] == vars["Pin"][cs,y,t] * get_row("efficiency",cs)
+                - (get_row("loss_fixed", cs) * built_units(cs, y) if get_row("loss_fixed", cs) > 0 else 0)
                 for y in get_set("year")
                 for t in get_set("time")
                 for cs in get_set("conversion_subprocess")

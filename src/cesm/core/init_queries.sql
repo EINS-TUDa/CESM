@@ -70,6 +70,7 @@ CREATE TABLE IF NOT EXISTS param_cs (
     id INTEGER PRIMARY KEY,
     cs_id INTEGER,
     efficiency FLOAT,
+    loss_fixed FLOAT,
     technical_lifetime INTEGER,
     technical_availability FLOAT,
     cap_max_unit FLOAT,

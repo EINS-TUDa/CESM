@@ -80,7 +80,7 @@ class Parser:
             return value * self.units["co2_spec"]
         if p_name in ("max_eout", "min_eout"):
             return value * self.units["energy"]
-        if p_name in ("cap_min", "cap_max", "cap_res_min", "cap_res_max", "cap_active", "cap_max_unit"):
+        if p_name in ("cap_min", "cap_max", "cap_res_min", "cap_res_max", "cap_active", "cap_max_unit", "loss_fixed"):
             return value * self.units["power"]
         else:
             return value
