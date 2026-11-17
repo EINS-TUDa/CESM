@@ -52,7 +52,7 @@ Param_Default_Dict = {
     "cap_res_max": 0,
     "availability_profile": 1,
     "technical_availability": 1,
-    "cap_max_unit": 1e3,
+    "cap_max_unit": None,
     "output_profile": None,
     "min_eout": 0,
     "out_frac_min": 0,

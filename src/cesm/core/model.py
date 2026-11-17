@@ -4,6 +4,8 @@ Energy System Planning Model in Gurobi Python API
 Author: Sina Hajikazemi
 Date: 10.10.2023
 """
+import logging
+import math
 from typing import Optional
 
 import gurobipy as gp
@@ -15,9 +17,12 @@ import pkg_resources
 
 from cesm.core.data_access import DAO
 
+logger = logging.getLogger(__name__)
+
 
 class Model():
-    def __init__(self, conn: Connection) -> None:
+    def __init__(self, conn: Connection, big_m: float = 1e6) -> None:
+        self.big_m = big_m # Model's internal power unit. For cs with base costs that have neither cap_max_unit not cap_max.
         self.model = gp.Model("DEModel")
         self.conn = conn
         self.cursor = self.conn.cursor()
@@ -57,13 +62,24 @@ class Model():
             vtype=GRB.INTEGER,
             name="NewlyInstalledUnits",
         )
+
+        self.build_activation_coef = {}
         for cs in base_cost_cs:
-            # If no per-unit cap is set (cap_max_unit == default value 1e3),
-            # restrict to a binary install/don't-install decision per year.
             cap_max_unit = self.dao.get_row("cap_max_unit", cs)
-            if cap_max_unit == 1e3:
-                for y in get_set("year"):
-                    vars["NewlyInstalledUnits"][cs, y].vtype = GRB.BINARY
+            for y in get_set("year"):
+                cap_max = self.dao.get_row("cap_max", cs, y)
+                max_cap_new = None if cap_max is None else max(cap_max - self.dao.get_row("cap_res_min", cs, y), 0.0)
+                var = vars["NewlyInstalledUnits"][cs, y]
+                if cap_max_unit is not None:
+                    self.build_activation_coef[cs, y] = (cap_max_unit, "cap_max_unit")
+                    if max_cap_new is not None:
+                        var.ub = math.ceil(max_cap_new / cap_max_unit - 1e-9)
+                else:
+                    var.vtype = GRB.BINARY
+                    if max_cap_new is not None:
+                        self.build_activation_coef[cs, y] = (max_cap_new, "cap_max")
+                    else:
+                        self.build_activation_coef[cs, y] = (self.big_m, "big_m")
 
         # Energy
         vars["Eouttot"] = model.addVars(get_set("conversion_subprocess"), get_set("year"), name="Eouttot")
@@ -109,7 +125,7 @@ class Model():
 
         constrs["build_activation"] = model.addConstrs(
             (
-                vars["Cap_new"][cs, y] <= self.dao.get_row("cap_max_unit", cs) * vars["NewlyInstalledUnits"][cs, y]
+                vars["Cap_new"][cs, y] <= self.build_activation_coef[cs, y][0] * vars["NewlyInstalledUnits"][cs, y]
                 for y in get_set("year")
                 for cs in get_set("conversion_subprocess_base_costs")
             ),
@@ -487,7 +503,42 @@ class Model():
         if mip_gap is not None:
             self.model.Params.MIPGap = mip_gap
         #self.model.setParam(GRB.Param.BarConvTol, 1e-7)
-        return self.model.optimize()
+        result = self.model.optimize()
+        self._check_capacity_limits()
+        return result
+
+    def _check_capacity_limits(self, rel_tol: float = 1e-4) -> None:
+        """Warn wherever a capacity limit is binding in the solution."""
+        if self.model.SolCount == 0:
+            return
+        fmt = lambda cs, y, name, val, lim: f"{cs.cp} ({cs.cin} -> {cs.cout}), year {y}: {name} = {val:g} (limit {lim:g})"
+
+        big_m_binding = []
+        for (cs, y), (m, source) in self.build_activation_coef.items():
+            if source != "big_m":
+                continue
+            cap_new = self.vars["Cap_new"][cs, y].X
+            if cap_new >= m * (1 - rel_tol):
+                big_m_binding.append(fmt(cs, y, "Cap_new", cap_new, m))
+        if big_m_binding:
+            logger.warning(
+                "Fallback big_m = %g limits newly installed capacity of %d conversion subprocess-year(s); "
+                "the solution may be suboptimal. Increase big_m or set cap_max / cap_max_unit:\n  %s",
+                self.big_m, len(big_m_binding), "\n  ".join(big_m_binding),
+            )
+
+        cap_max_binding = []
+        for cs, y, cap_max in self.dao.iter_row("cap_max"):
+            if cap_max is None or cap_max <= 0:
+                continue
+            cap_active = self.vars["Cap_active"][cs, y].X
+            if cap_active >= cap_max * (1 - rel_tol):
+                cap_max_binding.append(fmt(cs, y, "Cap_active", cap_active, cap_max))
+        if cap_max_binding:
+            logger.info(
+                "cap_max limits active capacity of %d conversion subprocess-year(s):\n  %s",
+                len(cap_max_binding), "\n  ".join(cap_max_binding),
+            )
     
     def save_output(self) -> None:
         vars = self.vars # alias for readability
