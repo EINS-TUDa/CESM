@@ -58,7 +58,7 @@ class Model():
             name="NewlyInstalledUnits",
         )
         for cs in base_cost_cs:
-            # If no per-unit cap is set (cap_max_unit == default sentinel 1e6),
+            # If no per-unit cap is set (cap_max_unit == default value 1e3),
             # restrict to a binary install/don't-install decision per year.
             cap_max_unit = self.dao.get_row("cap_max_unit", cs)
             if cap_max_unit == 1e3:
@@ -336,6 +336,7 @@ class Model():
             return sum(max(get_row("min_eout", d, y) for y in get_set("year")) * max(p)
                        for d, p in zip(demands, profiles)) / (get_row("dt") * get_row("w"))
 
+        # tightens LP relaxations for faster solving.
         ties = {}
         for cs in get_set("conversion_subprocess"):
             producers = [p for p in get_set("conversion_subprocess") if p.cout == cs.cin]
