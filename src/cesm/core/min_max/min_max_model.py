@@ -56,7 +56,7 @@ class MinMaxModel(Model):
 
     def solve_min_max(self, pf_dir: Path, run_name: str, mip_gap: Optional[float] = None,
                       mip_gap_abs: Optional[float] = None, pf_mip_gap: Optional[float] = None,
-                      pf_obj: str = "val") -> dict:
+                      pf_obj: str = "val", pf_start: bool = True) -> dict:
         """Minimize the maximum relative regret over all scenarios.
 
         Requires the techmap to be parsed with ``MinMaxParser``. The scenarios are "base" (the
@@ -79,6 +79,9 @@ class MinMaxModel(Model):
         pf_mip_gap : relative MIP gap of the perfect foresight runs that compute missing f_s*.
         pf_obj : "val" uses the objective value (best solution found) of the perfect foresight runs as f_s*,
             "bound" uses the best bound. Equal if the perfect foresight runs are solved to optimality.
+        pf_start : if True, the design of every perfect foresight solution becomes a MIP start of the min-max model:
+            the design variables of the cs_equal conversion subprocesses of all blocks are set to that design,
+            gurobi completes the remaining variables.
         """
         scenarios, cs_equal = self._pre_solve_min_max(pf_obj)
         logger.info("Min-max regret over scenarios %s with %d shared conversion subprocesses", scenarios, len(cs_equal))
@@ -86,8 +89,9 @@ class MinMaxModel(Model):
         # 1. perfect foresight objective values
         pf_obj_vals = {}
         source = {}
+        pf_paths = {}
         for s in scenarios:
-            path = self.perfect_foresight_db_path(pf_dir, run_name, s)
+            path = pf_paths[s] = self.perfect_foresight_db_path(pf_dir, run_name, s)
             if path.exists():
                 source[s] = "read"
                 logger.info("Perfect foresight database of scenario '%s' found: %s", s, path)
@@ -142,7 +146,11 @@ class MinMaxModel(Model):
         }
         model.setObjective(max_rel_regret, GRB.MINIMIZE)
 
-        # 5. solve
+        # 5. perfect foresight designs as MIP starts
+        if pf_start:
+            self._set_perfect_foresight_starts(scenarios, cs_equal, pf_paths)
+
+        # 6. solve
         if mip_gap_abs is not None:
             model.Params.MIPGapAbs = mip_gap_abs
         self.solve(mip_gap=mip_gap)
@@ -166,6 +174,35 @@ class MinMaxModel(Model):
             f"{s}: TOTEX = {r['totex']:g}, f* = {r['perfect_foresight_obj_value']:g}, rel. regret = {100 * r['rel_regret']:.4f} %"
             for s, r in self.min_max_result["scenarios"].items()))
         return self.min_max_result
+
+    def _set_perfect_foresight_starts(self, scenarios: list[str], cs_equal: list, pf_paths: dict[str, Path]) -> None:
+        model = self.model
+        years = self.dao.get_set("year")
+        model.NumStart = len(pf_paths)
+        model.update()
+        for k, (s_pf, path) in enumerate(pf_paths.items()):
+            disk = sqlite3.connect(path)
+            try:
+                design = MinMaxDAO(disk).get_design()
+            finally:
+                disk.close()
+            start_vars, start_vals = [], []
+            for s in scenarios:
+                vars = self.scenario_vars[s]
+                units_cs = set(self.sdao[s].get_set("conversion_subprocess_base_costs"))
+                for cs in cs_equal:
+                    for y in years:
+                        cap_new, cap_active, units = design.get((cs, y), (0.0, 0.0, 0.0))
+                        start_vars += [vars["Cap_new"][cs, y], vars["Cap_active"][cs, y]]
+                        start_vals += [cap_new, cap_active]
+                        if cs in units_cs:
+                            start_vars.append(vars["NewlyInstalledUnits"][cs, y])
+                            start_vals.append(round(units or 0.0))
+            model.Params.StartNumber = k
+            model.setAttr("Start", start_vars, start_vals)
+            model.update()
+            logger.info("MIP start %d: design of the perfect foresight solution of scenario '%s' (%s)", k, s_pf, path)
+        model.Params.StartNumber = 0
 
     def _solve_perfect_foresight(self, s: str, mip_gap: Optional[float], path: Path) -> None:
         """Solve scenario s on its own and write its results to the database ``path``."""

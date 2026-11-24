@@ -48,3 +48,18 @@ class MinMaxDAO(DAO):
                     self.cursor.execute(f"""INSERT INTO param_cs_y (cs_id, y_id, {param}) VALUES (?, ?, ?)
                         ON CONFLICT(cs_id, y_id) DO UPDATE SET {param} = excluded.{param}""", (cs_id, y_id, value))
         self.conn.commit()
+
+    def get_design(self) -> dict[tuple[CS, int], tuple[float, float, float]]:
+        """Design (cap_new, cap_active, newly_installed_units) per (cs, year) of the results stored in this
+        database. Missing (cs, year) have all values 0."""
+        query = """
+        SELECT cp.name, cin.name, cout.name, y.value, o.cap_new, o.cap_active, o.newly_installed_units
+        FROM output_cs_y AS o
+        JOIN conversion_subprocess AS cs ON o.cs_id = cs.id
+        JOIN conversion_process AS cp ON cs.cp_id = cp.id
+        JOIN commodity AS cin ON cs.cin_id = cin.id
+        JOIN commodity AS cout ON cs.cout_id = cout.id
+        JOIN year AS y ON o.y_id = y.id;
+        """
+        return {(CS(cp, cin, cout), y): (cap_new, cap_active, units)
+                for cp, cin, cout, y, cap_new, cap_active, units in self.cursor.execute(query).fetchall()}
