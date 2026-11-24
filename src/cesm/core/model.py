@@ -15,44 +15,74 @@ import sqlite3
 from sqlite3 import Connection
 import pkg_resources
 
-from cesm.core.data_access import DAO
+from cesm.core.data_access import DAO, ScenarioDAO
 
 logger = logging.getLogger(__name__)
 
 
+BASE_SCENARIO = "base"
+
+
 class Model():
-    def __init__(self, conn: Connection, big_m: float = 1e6) -> None:
+    def __init__(self, conn: Connection, big_m: float = 1e6, scenario: str = BASE_SCENARIO) -> None:
+        """Build the model for one scenario.
+
+        ``scenario`` is the name of a scenario_param scenario (see :class:`cesm.core.min_max.min_max_model.MinMaxModel`).
+        The default "base" is the unmodified techmap.
+        """
         self.big_m = big_m # Model's internal power unit. For cs with base costs that have neither cap_max_unit not cap_max.
         self.model = gp.Model("DEModel")
         self.conn = conn
         self.cursor = self.conn.cursor()
         self.dao = DAO(self.conn)
+        self.scenario = scenario
 
-        self._add_var()
-        self._add_constr()
-    
-    def _add_var(self) -> None:
+        # Every variable, constraint and parameter is scenario dependent. They are stored per scenario.
+        self.sdao: dict[str, ScenarioDAO] = {}
+        self.scenario_vars: dict[str, dict] = {}
+        self.scenario_constrs: dict[str, dict] = {}
+        self.scenario_build_activation_coef: dict[str, dict] = {}
+
+        self._add_scenario(scenario)
+        # aliases for the scenario this model was built for
+        self.vars = self.scenario_vars[scenario]
+        self.constrs = self.scenario_constrs[scenario]
+        self.build_activation_coef = self.scenario_build_activation_coef[scenario]
+        self.model.setObjective(self.vars["TOTEX"] + 0, GRB.MINIMIZE)
+
+    def _name(self, name: str, s: str) -> str:
+        """Gurobi name of a variable/constraint. Blocks of other scenarios than this model's get a suffix."""
+        return name if s == self.scenario else f"{name}_{s}"
+
+    def _add_scenario(self, s: str) -> None:
+        """Add variables and constraints of scenario ``s`` to the gurobi model."""
+        self.sdao[s] = ScenarioDAO(self.dao, None if s == BASE_SCENARIO else s)
+        self._add_var(s)
+        self._add_constr(s)
+
+    def _add_var(self, s: str) -> None:
         model = self.model # alias for readability
-        self.vars = {}
-        vars = self.vars # alias for readability
-        get_set = self.dao.get_set
+        sdao = self.sdao[s]
+        vars = self.scenario_vars[s] = {}
+        get_set = sdao.get_set
+        n = lambda name: self._name(name, s)
 
         # Costs
-        vars["TOTEX"] = model.addVar(name="TOTEX")
-        vars["CAPEX"] = model.addVar(name="CAPEX")
-        vars["OPEX"] = model.addVar(name="OPEX")
-        vars["TotalSalvageValue"] = model.addVar(name="SalvageValue")
-        vars["DiscountedSalvageValue"] = model.addVars(get_set("conversion_subprocess"), get_set("year"), name="DiscountedSalvageValue")
+        vars["TOTEX"] = model.addVar(name=n("TOTEX"))
+        vars["CAPEX"] = model.addVar(name=n("CAPEX"))
+        vars["OPEX"] = model.addVar(name=n("OPEX"))
+        vars["TotalSalvageValue"] = model.addVar(name=n("SalvageValue"))
+        vars["DiscountedSalvageValue"] = model.addVars(get_set("conversion_subprocess"), get_set("year"), name=n("DiscountedSalvageValue"))
 
         # CO2
-        vars["Total_annual_co2_emission"] = model.addVars(get_set("year"), name="Total_annual_co2_emission")
+        vars["Total_annual_co2_emission"] = model.addVars(get_set("year"), name=n("Total_annual_co2_emission"))
         
         # Power
-        vars["Cap_new"] = model.addVars(get_set("conversion_subprocess"), get_set("year"), name="Cap_new")
-        vars["Cap_active"] = model.addVars(get_set("conversion_subprocess"), get_set("year"), name="Cap_active")
-        vars["Cap_res"] = model.addVars(get_set("conversion_subprocess"), get_set("year"), name="Cap_res")
-        vars["Pin"] = model.addVars(get_set("conversion_subprocess"), get_set("year"), get_set("time"), name="Pin")
-        vars["Pout"] = model.addVars(get_set("conversion_subprocess"), get_set("year"), get_set("time"), name="Pout")
+        vars["Cap_new"] = model.addVars(get_set("conversion_subprocess"), get_set("year"), name=n("Cap_new"))
+        vars["Cap_active"] = model.addVars(get_set("conversion_subprocess"), get_set("year"), name=n("Cap_active"))
+        vars["Cap_res"] = model.addVars(get_set("conversion_subprocess"), get_set("year"), name=n("Cap_res"))
+        vars["Pin"] = model.addVars(get_set("conversion_subprocess"), get_set("year"), get_set("time"), name=n("Pin"))
+        vars["Pout"] = model.addVars(get_set("conversion_subprocess"), get_set("year"), get_set("time"), name=n("Pout"))
 
         # NewlyInstalledUnits is defined for all cs with base costs.
         base_cost_cs = get_set("conversion_subprocess_base_costs")
@@ -60,59 +90,61 @@ class Model():
             base_cost_cs,
             get_set("year"),
             vtype=GRB.INTEGER,
-            name="NewlyInstalledUnits",
+            name=n("NewlyInstalledUnits"),
         )
 
-        self.build_activation_coef = {}
+        build_activation_coef = self.scenario_build_activation_coef[s] = {}
         for cs in base_cost_cs:
-            cap_max_unit = self.dao.get_row("cap_max_unit", cs)
+            cap_max_unit = sdao.get_row("cap_max_unit", cs)
             for y in get_set("year"):
-                cap_max = self.dao.get_row("cap_max", cs, y)
-                max_cap_new = None if cap_max is None else max(cap_max - self.dao.get_row("cap_res_min", cs, y), 0.0)
+                cap_max = sdao.get_row("cap_max", cs, y)
+                max_cap_new = None if cap_max is None else max(cap_max - sdao.get_row("cap_res_min", cs, y), 0.0)
                 var = vars["NewlyInstalledUnits"][cs, y]
                 if cap_max_unit is not None:
-                    self.build_activation_coef[cs, y] = (cap_max_unit, "cap_max_unit")
+                    build_activation_coef[cs, y] = (cap_max_unit, "cap_max_unit")
                     if max_cap_new is not None:
                         var.ub = math.ceil(max_cap_new / cap_max_unit - 1e-9)
                 else:
                     var.vtype = GRB.BINARY
                     if max_cap_new is not None:
-                        self.build_activation_coef[cs, y] = (max_cap_new, "cap_max")
+                        build_activation_coef[cs, y] = (max_cap_new, "cap_max")
                     else:
-                        self.build_activation_coef[cs, y] = (self.big_m, "big_m")
+                        build_activation_coef[cs, y] = (self.big_m, "big_m")
 
         # Energy
-        vars["Eouttot"] = model.addVars(get_set("conversion_subprocess"), get_set("year"), name="Eouttot")
-        vars["Eintot"] = model.addVars(get_set("conversion_subprocess"), get_set("year"), name="Eintot")
-        vars["Eouttime"] = model.addVars(get_set("conversion_subprocess"), get_set("year"), get_set("time"), name="Eouttime")
-        vars["Eintime"] = model.addVars(get_set("conversion_subprocess"), get_set("year"), get_set("time"), name="Eintime")
-        vars["Enetgen"] = model.addVars(get_set("commodity"), get_set("year"), get_set("time"), name="Enetgen")
-        vars["Enetcons"] = model.addVars(get_set("commodity"), get_set("year"), get_set("time"), name="Enetcons")
+        vars["Eouttot"] = model.addVars(get_set("conversion_subprocess"), get_set("year"), name=n("Eouttot"))
+        vars["Eintot"] = model.addVars(get_set("conversion_subprocess"), get_set("year"), name=n("Eintot"))
+        vars["Eouttime"] = model.addVars(get_set("conversion_subprocess"), get_set("year"), get_set("time"), name=n("Eouttime"))
+        vars["Eintime"] = model.addVars(get_set("conversion_subprocess"), get_set("year"), get_set("time"), name=n("Eintime"))
+        vars["Enetgen"] = model.addVars(get_set("commodity"), get_set("year"), get_set("time"), name=n("Enetgen"))
+        vars["Enetcons"] = model.addVars(get_set("commodity"), get_set("year"), get_set("time"), name=n("Enetcons"))
 
         # Storage
-        vars["E_storage_level"] = model.addVars(get_set("conversion_subprocess"), get_set("year"), get_set("time"), name="E_storage_level")
-        vars["E_storage_level_max"] = model.addVars(get_set("conversion_subprocess"), get_set("year"), name="E_storage_level_max")
+        vars["E_storage_level"] = model.addVars(get_set("conversion_subprocess"), get_set("year"), get_set("time"), name=n("E_storage_level"))
+        vars["E_storage_level_max"] = model.addVars(get_set("conversion_subprocess"), get_set("year"), name=n("E_storage_level_max"))
 
-    def _add_constr(self) -> None:
+    def _add_constr(self, s: str) -> None:
         model = self.model
-        self.constrs = {}
-        constrs = self.constrs # alias for readability
-        vars = self.vars # alias for readability
-        get_row = self.dao.get_row
-        iter_row = self.dao.iter_row
-        get_set = self.dao.get_set
+        sdao = self.sdao[s]
+        constrs = self.scenario_constrs[s] = {}
+        vars = self.scenario_vars[s]
+        get_row = sdao.get_row
+        iter_row = sdao.iter_row
+        get_set = sdao.get_set
+        n = lambda name: self._name(name, s)
+        build_activation_coef = self.scenario_build_activation_coef[s]
 
         # Costs
-        constrs["totex"] = model.addConstr(vars["TOTEX"] == vars["CAPEX"] + vars["OPEX"], name="totex")
+        constrs["totex"] = model.addConstr(vars["TOTEX"] == vars["CAPEX"] + vars["OPEX"], name=n("totex"))
         capex_terms = gp.quicksum(
-            self.dao.get_discount_factor(y)
+            sdao.get_discount_factor(y)
             * vars["Cap_new"][cs, y] * get_row("capex_cost_power", cs, y)
             for cs in get_set("conversion_subprocess")
             for y in get_set("year")
         )
 
         capex_terms += gp.quicksum(
-            self.dao.get_discount_factor(y)
+            sdao.get_discount_factor(y)
             * vars["NewlyInstalledUnits"][cs, y] * get_row("capex_cost_base", cs, y)
             for cs in get_set("conversion_subprocess_base_costs")
             for y in get_set("year")
@@ -120,16 +152,16 @@ class Model():
 
         constrs["capex"] = model.addConstr(
             vars["CAPEX"] == capex_terms - vars["TotalSalvageValue"],
-            name="capex",
+            name=n("capex"),
         )
 
         constrs["build_activation"] = model.addConstrs(
             (
-                vars["Cap_new"][cs, y] <= self.build_activation_coef[cs, y][0] * vars["NewlyInstalledUnits"][cs, y]
+                vars["Cap_new"][cs, y] <= build_activation_coef[cs, y][0] * vars["NewlyInstalledUnits"][cs, y]
                 for y in get_set("year")
                 for cs in get_set("conversion_subprocess_base_costs")
             ),
-            name="build_activation",
+            name=n("build_activation"),
         )
         
         def year_gap(y):
@@ -145,16 +177,16 @@ class Model():
                 (
                         vars["Cap_active"][cs, y] * get_row("opex_cost_power", cs, y) +
                         vars["Eouttot"][cs, y] * get_row("opex_cost_energy", cs, y)
-                ) * year_gap(y) * self.dao.get_discount_factor(y)
+                ) * year_gap(y) * sdao.get_discount_factor(y)
                 for cs in get_set("conversion_subprocess")
                 for y in get_set("year")
             ) +
             sum(
                 get_row("co2_price", y) * vars["Total_annual_co2_emission"][y] *
-                year_gap(y) * self.dao.get_discount_factor(y)
+                year_gap(y) * sdao.get_discount_factor(y)
                 for y in get_set("year")
             ),
-            name="opex"
+            name=n("opex")
         )
 
         # Salvage Value
@@ -166,7 +198,7 @@ class Model():
             salvage_value = vars["Cap_new"][cs,y] * get_row("capex_cost_power",cs,y) * remaining_fraction
             if cs in base_cost_cs_set:
                 salvage_value += vars["NewlyInstalledUnits"][cs,y] * get_row("capex_cost_base",cs,y) * remaining_fraction
-            discounted_salvage_value = salvage_value * self.dao.get_discount_factor(last_year)
+            discounted_salvage_value = salvage_value * sdao.get_discount_factor(last_year)
             return discounted_salvage_value
             
         model.addConstrs(
@@ -176,7 +208,7 @@ class Model():
                 for y in get_set("year")
                 if (get_set("year")[-1] - y) < get_row("technical_lifetime",cs)
             ),
-            name = "salvage_value"
+            name=n("salvage_value")
         )
 
 
@@ -184,7 +216,7 @@ class Model():
             vars["TotalSalvageValue"] == sum(vars["DiscountedSalvageValue"][cs,y] 
                                              for cs in get_set("conversion_subprocess") for y in get_set("year") 
                                             if (get_set("year")[-1] - y) < get_row("technical_lifetime",cs)),
-            name = "total_salvage_value"
+            name=n("total_salvage_value")
         )
 
         # Power Balance
@@ -197,7 +229,7 @@ class Model():
                 for y in get_set("year")
                 for co in nondummy_commodities
             ),
-            name = "power_balance"
+            name=n("power_balance")
         )
         
         # CO2
@@ -206,14 +238,14 @@ class Model():
                 vars["Total_annual_co2_emission"][y] == sum(get_row("spec_co2", cs, y) * vars["Eouttot"][cs,y] for cs in get_set("conversion_subprocess"))
                 for y in get_set("year")
             ),
-            name="co2_emission_eq"
+            name=n("co2_emission_eq")
         )
         constrs["co2_emission_limit"] = model.addConstrs(
             (
                 vars["Total_annual_co2_emission"][y] <= limit
                 for (y,limit) in iter_row("annual_co2_limit")
             ),
-            name = "co2_emission_limit"
+            name=n("co2_emission_limit")
         )
         
         # Power Output Constraints
@@ -231,7 +263,7 @@ class Model():
                 for cs in get_set("conversion_subprocess")
                 if cs not in get_set("storage_cs")
             ),
-            name = "efficiency_eq"
+            name=n("efficiency_eq")
         )
         constrs["max_power_out"] = model.addConstrs(
             (
@@ -240,7 +272,7 @@ class Model():
                 for t in get_set("time")
                 for cs in get_set("conversion_subprocess")
             ),
-            name = "max_power_out"
+            name=n("max_power_out")
         )
         constrs["re_availability"] = model.addConstrs(
             (
@@ -250,7 +282,7 @@ class Model():
                 for t in get_set("time")
                 # for (cs,t, avail) in iter_row("availability_profile")
             ),
-            name = "re_availability"
+            name=n("re_availability")
         )
         constrs["technical_availability"] = model.addConstrs(
             (
@@ -268,7 +300,7 @@ class Model():
                 for t in get_set("time")
                 for cs in get_set("conversion_subprocess")
             ),
-            name = "eouttime"
+            name=n("eouttime")
         )
         
         constrs["eintime"] = model.addConstrs(
@@ -278,7 +310,7 @@ class Model():
                 for t in get_set("time")
                 for cs in get_set("conversion_subprocess")
             ),
-            name = "eintime"
+            name=n("eintime")
         )
 
         # Fraction Equations
@@ -289,7 +321,7 @@ class Model():
                 for (cs,y, out_frac_min) in iter_row("out_frac_min")
                 if out_frac_min != 0
             ),
-            name = "min_cosupply"
+            name=n("min_cosupply")
         )
         constrs["max_cosupply"] = model.addConstrs(
             (
@@ -297,7 +329,7 @@ class Model():
                 for t in get_set("time")
                 for (cs,y,out_frac_max) in iter_row("out_frac_max")
             ),
-            name = "max_cosupply"
+            name=n("max_cosupply")
         )
         constrs["min_couse"] = model.addConstrs(
             (
@@ -305,7 +337,7 @@ class Model():
                 for t in get_set("time")
                 for (cs,y, in_frac_min) in iter_row("in_frac_min")
             ),
-            name = "min_couse"
+            name=n("min_couse")
         )
         constrs["max_couse"] = model.addConstrs(
             (
@@ -313,7 +345,7 @@ class Model():
                 for t in get_set("time")
                 for (cs,y,in_frac_max) in iter_row("in_frac_max")
             ),
-            name = "max_couse"
+            name=n("max_couse")
         )
 
         # Capacity
@@ -323,7 +355,7 @@ class Model():
                 for y in get_set("year")
                 for cs in get_set("conversion_subprocess")
             ),
-            name = "max_cap_res"
+            name=n("max_cap_res")
         )
         constrs["min_cap_res"] = model.addConstrs(
             (
@@ -331,7 +363,7 @@ class Model():
                 for y in get_set("year")
                 for cs in get_set("conversion_subprocess")
             ),
-            name = "min_cap_res"
+            name=n("min_cap_res")
         )
 
         constrs["cap_active"] = model.addConstrs(
@@ -340,7 +372,7 @@ class Model():
                 for y in get_set("year")
                 for cs in get_set("conversion_subprocess")
             ),
-            name = "cap_active"
+            name=n("cap_active")
         )
         base_cost_cs_set = set(get_set("conversion_subprocess_base_costs"))
 
@@ -361,7 +393,7 @@ class Model():
         constrs["producer_tie"] = model.addConstrs(
             (vars["Cap_active"][cs, y] - vars["Cap_res"][cs, y] <= ties[cs][1] * 1.001 * built_units(ties[cs][0], y)
              for cs in ties for y in get_set("year")),
-            name="producer_tie")
+            name=n("producer_tie"))
 
         constrs["max_cap_active"] = model.addConstrs(
             (
@@ -369,7 +401,7 @@ class Model():
                 for cs, y, cap_max in iter_row("cap_max")
                 if cap_max is not None
             ),
-            name="max_cap_active",
+            name=n("max_cap_active"),
         )
 
         constrs["min_cap_active"] = model.addConstrs(
@@ -378,7 +410,7 @@ class Model():
                 for cs, y, cap_min in iter_row("cap_min")
                 if cap_min
             ),
-            name="min_cap_active",
+            name=n("min_cap_active"),
         )
 
         # Energy
@@ -388,7 +420,7 @@ class Model():
                 for y in get_set("year")
                 for cs in get_set("conversion_subprocess")
             ),
-            name = "energy_power_out"
+            name=n("energy_power_out")
         )
         constrs["energy_power_in"] = model.addConstrs(
             (
@@ -396,21 +428,21 @@ class Model():
                 for y in get_set("year")
                 for cs in get_set("conversion_subprocess")
             ),
-            name = "energy_power_in"
+            name=n("energy_power_in")
         )
         constrs["max_energy_out"] = model.addConstrs(
             (
                 vars["Eouttot"][cs,y] <= max_eout
                 for (cs,y,max_eout) in iter_row("max_eout")
             ),
-            name = "max_energy_out"
+            name=n("max_energy_out")
         )
         constrs["min_energy_out"] = model.addConstrs(
             (
                 vars["Eouttot"][cs,y] >= min_eout
                 for (cs,y,min_eout) in iter_row("min_eout")
             ),
-            name = "min_energy_out"
+            name=n("min_energy_out")
         )
         profile_rows = {}
         for cs, t, output_profile in iter_row("output_profile"):
@@ -432,7 +464,7 @@ class Model():
                 for (cs, t, output_profile) in filtered_profiles
                 for y in get_set("year")
             ),
-            name="load_shape",
+            name=n("load_shape"),
         )
         constrs["net_to_gen"] = model.addConstrs(
             (
@@ -441,7 +473,7 @@ class Model():
                 for t in get_set("time")
                 for co in get_set("commodity")
             ),
-            name = "net_to_gen"
+            name=n("net_to_gen")
         )
         constrs["net_to_con"] = model.addConstrs(
             (
@@ -450,7 +482,7 @@ class Model():
                 for t in get_set("time")
                 for co in get_set("commodity")
             ),
-            name = "net_to_con"
+            name=n("net_to_con")
         )
 
         # Storage
@@ -461,7 +493,7 @@ class Model():
                 for t in get_set("time")
                 for cs in get_set("storage_cs")
             ),
-            name = "storage_energy_limit"
+            name=n("storage_energy_limit")
         )
         constrs["charge_power_limit"] = model.addConstrs(
             (
@@ -470,7 +502,7 @@ class Model():
                 for t in get_set("time")
                 for cs in get_set("storage_cs")
             ),
-            name = "storage_charge_power_limit"
+            name=n("storage_charge_power_limit")
         )
 
         constrs["energy_balance"] = model.addConstrs(
@@ -482,7 +514,7 @@ class Model():
                 for t in get_set("time")
                 for cs in get_set("storage_cs")
             ),
-            name = "storage_energy_balance"
+            name=n("storage_energy_balance")
         )
 
         constrs["c_rate_relation"] = model.addConstrs(
@@ -491,10 +523,8 @@ class Model():
                 for y in get_set("year")
                 for cs in get_set("storage_cs")
             ),
-            name = "c_rate_relation"
+            name=n("c_rate_relation")
         )
-
-        model.setObjective(vars["TOTEX"]+ 0, GRB.MINIMIZE)
 
     def solve(self, mip_gap: Optional[float] = None) -> None:
         self.model.Params.Crossover = 0
@@ -511,39 +541,49 @@ class Model():
         """Warn wherever a capacity limit is binding in the solution."""
         if self.model.SolCount == 0:
             return
+        for s in self.scenario_vars:
+            self._check_capacity_limits_scenario(s, rel_tol)
+
+    def _check_capacity_limits_scenario(self, s: str, rel_tol: float) -> None:
+        vars = self.scenario_vars[s]
+        prefix = "" if len(self.scenario_vars) == 1 else f"Scenario '{s}': "
         fmt = lambda cs, y, name, val, lim: f"{cs.cp} ({cs.cin} -> {cs.cout}), year {y}: {name} = {val:g} (limit {lim:g})"
 
         big_m_binding = []
-        for (cs, y), (m, source) in self.build_activation_coef.items():
+        for (cs, y), (m, source) in self.scenario_build_activation_coef[s].items():
             if source != "big_m":
                 continue
-            cap_new = self.vars["Cap_new"][cs, y].X
+            cap_new = vars["Cap_new"][cs, y].X
             if cap_new >= m * (1 - rel_tol):
                 big_m_binding.append(fmt(cs, y, "Cap_new", cap_new, m))
         if big_m_binding:
             logger.warning(
-                "Fallback big_m = %g limits newly installed capacity of %d conversion subprocess-year(s); "
+                "%sFallback big_m = %g limits newly installed capacity of %d conversion subprocess-year(s); "
                 "the solution may be suboptimal. Increase big_m or set cap_max / cap_max_unit:\n  %s",
-                self.big_m, len(big_m_binding), "\n  ".join(big_m_binding),
+                prefix, self.big_m, len(big_m_binding), "\n  ".join(big_m_binding),
             )
 
         cap_max_binding = []
-        for cs, y, cap_max in self.dao.iter_row("cap_max"):
+        for cs, y, cap_max in self.sdao[s].iter_row("cap_max"):
             if cap_max is None or cap_max <= 0:
                 continue
-            cap_active = self.vars["Cap_active"][cs, y].X
+            cap_active = vars["Cap_active"][cs, y].X
             if cap_active >= cap_max * (1 - rel_tol):
                 cap_max_binding.append(fmt(cs, y, "Cap_active", cap_active, cap_max))
         if cap_max_binding:
             logger.info(
-                "cap_max limits active capacity of %d conversion subprocess-year(s):\n  %s",
-                len(cap_max_binding), "\n  ".join(cap_max_binding),
+                "%scap_max limits active capacity of %d conversion subprocess-year(s):\n  %s",
+                prefix, len(cap_max_binding), "\n  ".join(cap_max_binding),
             )
-    
-    def save_output(self) -> None:
-        vars = self.vars # alias for readability
-        get_set = self.dao.get_set # alias for readability
-        cursor = self.cursor # alias for readability
+
+    def save_output(self, scenario: Optional[str] = None, conn: Optional[Connection] = None) -> None:
+        """Write the results of ``scenario`` (default: the scenario this model was built for) to ``conn``
+        (default: the model's database)."""
+        scenario = self.scenario if scenario is None else scenario
+        conn = self.conn if conn is None else conn
+        vars = self.scenario_vars[scenario] # alias for readability
+        get_set = self.sdao[scenario].get_set # alias for readability
+        cursor = conn.cursor() # alias for readability
         # Y
         for y in get_set("year"):
             query = f"""
@@ -618,7 +658,7 @@ class Model():
         # without index
         query = f"""INSERT INTO output_global (OPEX, CAPEX, TOTEX) VALUES ({vars['OPEX'].X}, {vars['CAPEX'].X}, {vars['TOTEX'].X})"""
         cursor.execute(query)
-        self.conn.commit()
+        conn.commit()
 
 
 # if __name__ == "__main__":

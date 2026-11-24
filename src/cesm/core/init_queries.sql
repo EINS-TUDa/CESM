@@ -202,3 +202,46 @@ CREATE TABLE IF NOT EXISTS output_co_y_t (
     CONSTRAINT co_y_t_unique UNIQUE (co_id, y_id, t_id)
 );
 
+
+-- Min-max regret tables (only filled when the techmap is parsed with min_max=True)
+
+-- Scenario-specific overrides of input parameters. cs_id / y_id are NULL if the parameter has no CS / Y index.
+CREATE TABLE IF NOT EXISTS param_scenario (
+    id INTEGER PRIMARY KEY,
+    scenario_param TEXT,
+    param TEXT,
+    cs_id INTEGER,
+    y_id INTEGER,
+    value FLOAT,
+    FOREIGN KEY (cs_id) REFERENCES conversion_subprocess(id),
+    FOREIGN KEY (y_id) REFERENCES year(id)
+);
+
+-- Conversion subprocesses whose design variables are equal across all scenarios
+CREATE TABLE IF NOT EXISTS cs_equal (
+    id INTEGER PRIMARY KEY,
+    cs_id INTEGER,
+    FOREIGN KEY (cs_id) REFERENCES conversion_subprocess(id),
+    CONSTRAINT cs_unique UNIQUE (cs_id)
+);
+
+-- Result of the min-max regret optimization
+CREATE TABLE IF NOT EXISTS output_min_max (
+    id INTEGER PRIMARY KEY,
+    scenario_param TEXT,
+    totex FLOAT,
+    perfect_foresight_obj_value FLOAT,
+    rel_regret FLOAT,
+    max_rel_regret FLOAT,
+    CONSTRAINT scenario_unique UNIQUE (scenario_param)
+);
+
+-- Result of a perfect foresight run of one scenario (objective value, best bound and MIP gap of TOTEX)
+CREATE TABLE IF NOT EXISTS output_perfect_foresight (
+    id INTEGER PRIMARY KEY,
+    scenario_param TEXT,
+    obj_val FLOAT,
+    obj_bound FLOAT,
+    mip_gap FLOAT,
+    CONSTRAINT scenario_unique UNIQUE (scenario_param)
+);

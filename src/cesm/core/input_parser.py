@@ -49,6 +49,9 @@ class Parser:
 
     def parse(self):
         tmap = pd.ExcelFile(self.techmap_path)
+        self._parse(tmap)
+
+    def _parse(self, tmap) -> None:
         self.read_units(tmap)
         self.read_scenario(tmap)
         self.read_tss(tmap)

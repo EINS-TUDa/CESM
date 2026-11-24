@@ -1,7 +1,7 @@
 from sqlite3 import Connection
 from pandas import DataFrame
 from itertools import chain
-from typing import NamedTuple
+from typing import NamedTuple, Optional
 from functools import lru_cache
 from cesm.core.params import Param_Index_Dict, Output_Index_Dict, Param_Default_Dict
 
@@ -270,3 +270,88 @@ class DAO():
     def get_discount_factor(self, y: int) -> float:
          y_0 = self.get_set("year")[0]
          return (1 + self.get_row("discount_rate"))**(y_0 - y)
+
+
+class ScenarioDAO():
+    """Read-only view on the input parameters of one scenario.
+
+    Returns the scenario specific value of a parameter where the scenario overrides it and the techmap value
+    otherwise. Parameter lookups are cached, which speeds up building the model considerably.
+    """
+    _BASE_COSTS_PARAMS = {"capex_cost_base"}
+    _STORAGE_PARAMS = {"is_storage"}
+
+    def __init__(self, dao: DAO, scenario: Optional[str] = None) -> None:
+        self.dao = dao
+        self.scenario = scenario
+        self.overrides = self._load_overrides(dao, scenario)
+        self._overridden_params = {key[0] for key in self.overrides}
+        self._row_cache = {}
+        self._iter_cache = {}
+        self._set_cache = {}
+
+    @staticmethod
+    def _load_overrides(dao: DAO, scenario: Optional[str]) -> dict[tuple, float]:
+        """Parameter overrides of a scenario as {(param, *indices): value}, indices as used by get_row."""
+        if scenario is None:
+            return {}
+        query = """
+        SELECT ps.param, cp.name, cin.name, cout.name, y.value, ps.value
+        FROM param_scenario AS ps
+        LEFT JOIN conversion_subprocess AS cs ON ps.cs_id = cs.id
+        LEFT JOIN conversion_process AS cp ON cs.cp_id = cp.id
+        LEFT JOIN commodity AS cin ON cs.cin_id = cin.id
+        LEFT JOIN commodity AS cout ON cs.cout_id = cout.id
+        LEFT JOIN year AS y ON ps.y_id = y.id
+        WHERE ps.scenario_param = ?;
+        """
+        overrides = {}
+        for param, cp, cin, cout, y, value in dao.cursor.execute(query, (scenario,)).fetchall():
+            indices = []
+            for index in Param_Index_Dict[param]:
+                if index == "CS":
+                    indices.append(CS(cp, cin, cout))
+                elif index == "Y":
+                    indices.append(y)
+            overrides[(param, *indices)] = value
+        return overrides
+
+    def get_row(self, name, *indices):
+        key = (name, *indices)
+        if key in self.overrides:
+            return self.overrides[key]
+        if name in self.dao.output_index_dict:
+            return self.dao.get_row(name, *indices)
+        try:
+            return self._row_cache[key]
+        except KeyError:
+            value = self._row_cache[key] = self.dao.get_row(name, *indices)
+            return value
+
+    def iter_row(self, name: str):
+        if name in self.dao.output_index_dict:
+            return self.dao.iter_row(name)
+        if name not in self._iter_cache:
+            rows = self.dao.iter_row(name)
+            if name in self._overridden_params:
+                merged = {tuple(row[:-1]): row[-1] for row in rows}
+                merged.update({key[1:]: value for key, value in self.overrides.items() if key[0] == name})
+                rows = [(*idx, value) for idx, value in merged.items()]
+            self._iter_cache[name] = rows
+        return self._iter_cache[name]
+
+    def get_set(self, set_name):
+        if set_name not in self._set_cache:
+            if set_name == "conversion_subprocess_base_costs" and self._overridden_params & self._BASE_COSTS_PARAMS:
+                base_cost_cs = {cs for cs, _, v in self.iter_row("capex_cost_base") if v is not None and v > 0}
+                value = [cs for cs in self.dao.get_set("conversion_subprocess") if cs in base_cost_cs]
+            elif set_name == "storage_cs" and self._overridden_params & self._STORAGE_PARAMS:
+                value = [cs for cs in self.dao.get_set("conversion_subprocess") if self.get_row("is_storage", cs)]
+            else:
+                value = self.dao.get_set(set_name)
+            self._set_cache[set_name] = value
+        return self._set_cache[set_name]
+
+    def get_discount_factor(self, y: int) -> float:
+        y_0 = self.get_set("year")[0]
+        return (1 + self.get_row("discount_rate"))**(y_0 - y)
