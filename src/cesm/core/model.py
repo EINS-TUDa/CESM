@@ -23,6 +23,11 @@ logger = logging.getLogger(__name__)
 BASE_SCENARIO = "base"
 
 
+def _gurobi_output_is_logged() -> bool:
+    grb_logger = logging.getLogger("gurobipy")
+    return grb_logger.isEnabledFor(logging.INFO) and grb_logger.hasHandlers()
+
+
 class Model():
     def __init__(self, conn: Connection, big_m: float = 1e6, scenario: str = BASE_SCENARIO) -> None:
         """Build the model for one scenario.
@@ -32,6 +37,8 @@ class Model():
         """
         self.big_m = big_m # Model's internal power unit. For cs with base costs that have neither cap_max_unit not cap_max.
         self.model = gp.Model("DEModel")
+        if _gurobi_output_is_logged():
+           self.model.Params.LogToConsole = 0
         self.conn = conn
         self.cursor = self.conn.cursor()
         self.dao = DAO(self.conn)
