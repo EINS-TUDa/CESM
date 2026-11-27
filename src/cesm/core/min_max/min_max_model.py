@@ -75,7 +75,8 @@ class MinMaxModel(Model):
         run_name : prefix of the perfect foresight database names.
         mip_gap : relative MIP gap of the min-max model. Note that the objective max_rel_regret is close to 0,
             so a relative gap is very strict; prefer ``mip_gap_abs``.
-        mip_gap_abs : absolute MIP gap of the min-max model in units of max_rel_regret (e.g. 0.001 = 0.1 %-points).
+        mip_gap_abs : absolute MIP gap of the min-max model in units of max_rel_regret, i.e. in %-points
+            (e.g. 0.1 = 0.1 %-points).
         pf_mip_gap : relative MIP gap of the perfect foresight runs that compute missing f_s*.
         pf_obj : "val" uses the objective value (best solution found) of the perfect foresight runs as f_s*,
             "bound" uses the best bound. Equal if the perfect foresight runs are solved to optimality.
@@ -133,13 +134,13 @@ class MinMaxModel(Model):
                  for cs in cs_equal if cs in units_cs for y in years),
                 name=f"equal_NewlyInstalledUnits_{s}")
 
-        # 4. relative regret
+        # 4. relative regret (in percent)
         max_rel_regret = model.addVar(lb=-GRB.INFINITY, name="max_rel_regret")
         self.min_max_vars = {"max_rel_regret": max_rel_regret}
         self.min_max_constrs = {
             "rel_regret": {
                 s: model.addConstr(
-                    (self.scenario_vars[s]["TOTEX"] - pf_obj_vals[s]) / pf_obj_vals[s] <= max_rel_regret,
+                    100 * (self.scenario_vars[s]["TOTEX"] - pf_obj_vals[s]) / pf_obj_vals[s] <= max_rel_regret,
                     name=f"rel_regret_{s}")
                 for s in scenarios
             }
@@ -165,13 +166,13 @@ class MinMaxModel(Model):
                 s: {
                     "totex": totex[s],
                     "perfect_foresight_obj_value": pf_obj_vals[s],
-                    "rel_regret": (totex[s] - pf_obj_vals[s]) / pf_obj_vals[s],
+                    "rel_regret": 100 * (totex[s] - pf_obj_vals[s]) / pf_obj_vals[s],
                 }
                 for s in scenarios
             },
         }
-        logger.info("Min-max regret: max_rel_regret = %.4f %%\n  %s", 100 * max_rel_regret.X, "\n  ".join(
-            f"{s}: TOTEX = {r['totex']:g}, f* = {r['perfect_foresight_obj_value']:g}, rel. regret = {100 * r['rel_regret']:.4f} %"
+        logger.info("Min-max regret: max_rel_regret = %.4f %%\n  %s", max_rel_regret.X, "\n  ".join(
+            f"{s}: TOTEX = {r['totex']:g}, f* = {r['perfect_foresight_obj_value']:g}, rel. regret = {r['rel_regret']:.4f} %"
             for s, r in self.min_max_result["scenarios"].items()))
         return self.min_max_result
 

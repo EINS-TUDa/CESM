@@ -48,14 +48,14 @@ def main(time_limit: float | None = None):
 
     print("### solving min-max model started ###")
     st = time.time()
-    result = model.solve_min_max(RUN_DIR_PATH, MODEL_NAME, mip_gap_abs=1e-3, pf_mip_gap=0.005)
+    result = model.solve_min_max(RUN_DIR_PATH, MODEL_NAME, mip_gap_abs=0.1, pf_mip_gap=0.005)
     print(f"### solving min-max model finished in {time.time() - st:.0f} s ###")
 
-    print(f"\nmax_rel_regret = {100 * result['max_rel_regret']:.3f} % "
-          f"(bound {100 * result['max_rel_regret_bound']:.3f} %)")
+    print(f"\nmax_rel_regret = {result['max_rel_regret']:.3f} % "
+          f"(bound {result['max_rel_regret_bound']:.3f} %)")
     for s, r in result["scenarios"].items():
         print(f"  {s:>15}: TOTEX = {r['totex']:12.1f}, perfect foresight = {r['perfect_foresight_obj_value']:12.1f}, "
-              f"rel. regret = {100 * r['rel_regret']:.3f} %")
+              f"rel. regret = {r['rel_regret']:.3f} %")
 
     print("\n### saving results started ###")
     paths = model.save_output_min_max(RUN_DIR_PATH, MODEL_NAME)
