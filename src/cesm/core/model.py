@@ -541,40 +541,40 @@ class Model():
         """Warn wherever a capacity limit is binding in the solution."""
         if self.model.SolCount == 0:
             return
-        for s in self.scenario_vars:
-            self._check_capacity_limits_scenario(s, rel_tol)
-
-    def _check_capacity_limits_scenario(self, s: str, rel_tol: float) -> None:
-        vars = self.scenario_vars[s]
-        prefix = "" if len(self.scenario_vars) == 1 else f"Scenario '{s}': "
         fmt = lambda cs, y, name, val, lim: f"{cs.cp} ({cs.cin} -> {cs.cout}), year {y}: {name} = {val:g} (limit {lim:g})"
+        for s, vars in self.scenario_vars.items():
+            prefix = "" if len(self.scenario_vars) == 1 else f"Scenario '{s}': "
 
-        big_m_binding = []
-        for (cs, y), (m, source) in self.scenario_build_activation_coef[s].items():
-            if source != "big_m":
-                continue
-            cap_new = vars["Cap_new"][cs, y].X
-            if cap_new >= m * (1 - rel_tol):
-                big_m_binding.append(fmt(cs, y, "Cap_new", cap_new, m))
-        if big_m_binding:
-            logger.warning(
-                "%sFallback big_m = %g limits newly installed capacity of %d conversion subprocess-year(s); "
-                "the solution may be suboptimal. Increase big_m or set cap_max / cap_max_unit:\n  %s",
-                prefix, self.big_m, len(big_m_binding), "\n  ".join(big_m_binding),
-            )
+            big_m_binding = []
+            for (cs, y), (m, source) in self.scenario_build_activation_coef[s].items():
+                if source != "big_m":
+                    continue
+                cap_new = vars["Cap_new"][cs, y].X
+                if cap_new >= m * (1 - rel_tol):
+                    big_m_binding.append(fmt(cs, y, "Cap_new", cap_new, m))
+            if big_m_binding:
+                logger.warning(
+                    "%sFallback big_m = %g limits newly installed capacity of %d conversion subprocess-year(s); "
+                    "the solution may be suboptimal. Increase big_m or set cap_max / cap_max_unit:\n  %s",
+                    prefix, self.big_m, len(big_m_binding), "\n  ".join(big_m_binding),
+                )
 
-        cap_max_binding = []
-        for cs, y, cap_max in self.sdao[s].iter_row("cap_max"):
-            if cap_max is None or cap_max <= 0:
-                continue
-            cap_active = vars["Cap_active"][cs, y].X
-            if cap_active >= cap_max * (1 - rel_tol):
-                cap_max_binding.append(fmt(cs, y, "Cap_active", cap_active, cap_max))
-        if cap_max_binding:
-            logger.info(
-                "%scap_max limits active capacity of %d conversion subprocess-year(s):\n  %s",
-                prefix, len(cap_max_binding), "\n  ".join(cap_max_binding),
-            )
+            # not detected for subprocesses with availability < 1, e.g. renewables
+            times = self.sdao[s].get_set("time")
+            cap_max_binding = []
+            for cs, y, cap_max in self.sdao[s].iter_row("cap_max"):
+                if cap_max is None or cap_max <= 0:
+                    continue
+                cap_active = vars["Cap_active"][cs, y].X
+                if cap_active < cap_max * (1 - rel_tol):
+                    continue
+                pout_max = max(vars["Pout"][cs, y, t].X for t in times)
+                if pout_max >= cap_active * (1 - rel_tol):
+                    cap_max_binding.append(fmt(cs, y, "max(Pout)", pout_max, cap_max))
+            if cap_max_binding:
+                logger.warning(
+                    "%scap_max may limit the solution:\n  %s",prefix, "\n  ".join(cap_max_binding),
+                )
 
     def save_output(self, scenario: Optional[str] = None, conn: Optional[Connection] = None) -> None:
         """Write the results of ``scenario`` (default: the scenario this model was built for) to ``conn``
