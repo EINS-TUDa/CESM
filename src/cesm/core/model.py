@@ -566,11 +566,12 @@ class Model():
                     prefix, self.big_m, len(big_m_binding), "\n  ".join(big_m_binding),
                 )
 
-            # not detected for subprocesses with availability < 1, e.g. renewables
+            # Not detected for subprocesses with availability < 1, e.g. renewables.
             times = self.sdao[s].get_set("time")
+            base_cost_cs = set(self.sdao[s].get_set("conversion_subprocess_base_costs"))
             cap_max_binding = []
             for cs, y, cap_max in self.sdao[s].iter_row("cap_max"):
-                if cap_max is None or cap_max <= 0:
+                if cs not in base_cost_cs or cap_max is None or cap_max <= 0:
                     continue
                 cap_active = vars["Cap_active"][cs, y].X
                 if cap_active < cap_max * (1 - rel_tol):
@@ -580,7 +581,10 @@ class Model():
                     cap_max_binding.append(fmt(cs, y, "max(Pout)", pout_max, cap_max))
             if cap_max_binding:
                 logger.warning(
-                    "%scap_max may limit the solution:\n  %s",prefix, "\n  ".join(cap_max_binding),
+                    "%scap_max is binding for %d subprocess-year(s) with base investment costs, where it also "
+                    "serves as the activation bound; the solution may be suboptimal if cap_max was only meant "
+                    "as a numerical bound. Increase cap_max:\n  %s",
+                    prefix, len(cap_max_binding), "\n  ".join(cap_max_binding),
                 )
 
     def save_output(self, scenario: Optional[str] = None, conn: Optional[Connection] = None) -> None:
